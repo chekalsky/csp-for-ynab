@@ -44,7 +44,6 @@ function Shell() {
   const [plan, setPlan] = useState<CachedPlan | null>(null);
   const [overrides, setOverrides] = useState<PlanOverrides>(emptyOverrides());
   const [range, setRange] = useState<DateRange>({ id: "this_year" });
-  const [dataEpoch, setDataEpoch] = useState(0);
   const [loading, setLoading] = useState(false);
   const [fetchingMore, setFetchingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -273,7 +272,6 @@ function Shell() {
       )}
       {plan && (
         <Dashboard
-          key={dataEpoch}
           plan={plan}
           categories={categories}
           months={visibleMonths}
