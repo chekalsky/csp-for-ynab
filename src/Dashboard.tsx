@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { LineChart, StackedBars } from "./charts";
-import { formatMoney, formatPct, monthFull, monthLabel } from "./format";
+import { LineChart, PieChart, StackedBars } from "./charts";
+import { formatMoney, formatPct, monthFull, monthLabel, monthSpanLabel } from "./format";
 import {
   bucketsTotal,
-  meanBuckets,
   monthSeries,
   rangeTotals,
   visibleAmount,
@@ -14,6 +13,7 @@ import { getExcludeInvestments, setExcludeInvestments } from "./storage";
 import { Tagging } from "./Tagging";
 import {
   BUCKET_LABEL,
+  DEFAULT_METRIC,
   LIFESTYLE_SHOWN,
   SHOWN_BUCKETS,
   type CachedMonth,
@@ -73,9 +73,21 @@ export function Dashboard(props: {
     [months, chartCategories],
   );
   const ytd = rangeTotals(months, chartCategories);
-  const total = bucketsTotal(ytd, shownBuckets);
-  const avg = meanBuckets(series, shownBuckets);
+  const mixBuckets = shownBuckets.filter(
+    (bucket) => bucket !== "unmapped" || ytd.unmapped !== 0,
+  );
+  const total = bucketsTotal(ytd, mixBuckets);
   const unmapped = categories.filter((c) => c.bucket === "unmapped").length;
+  const presetLabel =
+    RANGE_PRESETS.find((p) => p.id === range.id)?.label ?? "";
+  const spanLabel =
+    months.length > 0
+      ? monthSpanLabel(months[0].month, months[months.length - 1].month)
+      : "";
+  const mixDates =
+    presetLabel && spanLabel
+      ? `${presetLabel}: ${spanLabel}`
+      : presetLabel || spanLabel;
   const [monthId, setMonthId] = useState(
     () => months[months.length - 1]?.month ?? "",
   );
@@ -85,7 +97,7 @@ export function Dashboard(props: {
     }
   }, [months, monthId]);
   const month = months.find((m) => m.month === monthId) ?? months[months.length - 1];
-  const chartSeries = shownBuckets.map((id) => ({
+  const chartSeries = mixBuckets.map((id) => ({
     id,
     name: BUCKET_LABEL[id],
     color: COLORS[id],
@@ -188,37 +200,56 @@ export function Dashboard(props: {
 
       <section>
         <h1>The mix</h1>
+        {mixDates && <p className="mix-dates">{mixDates}</p>}
         <p className="lede">
-          Every category except Ignore. Untagged ones sit in Needs a bucket until
-          you map them. Assigned or Spent follows the tags below.
+          Every category except Ignore.
+          {ytd.unmapped !== 0
+            ? " Untagged ones sit in Needs a bucket until you map them."
+            : ""}{" "}
+          Assigned or Spent follows the tags below.
         </p>
-        <div className="stats">
-          <Stat value={money(total)} label="Total in range" />
-          {shownBuckets.map((bucket) => (
-            <Stat
-              key={bucket}
-              value={money(ytd[bucket])}
-              label={`${BUCKET_LABEL[bucket]} · ${formatPct(ytd[bucket], total)}`}
-              tone={
-                bucket === "guilt_free"
-                  ? "guilt"
-                  : bucket === "unmapped"
-                    ? "unmapped"
-                    : bucket
-              }
+        {months.length > 0 && (
+          <div className="mix-layout">
+            <div className="mix-buckets">
+              {mixBuckets.map((bucket) => (
+                <div
+                  key={bucket}
+                  className={`mix-row stat-${
+                    bucket === "guilt_free"
+                      ? "guilt"
+                      : bucket === "unmapped"
+                        ? "unmapped"
+                        : bucket
+                  }`}
+                >
+                  <i className={`swatch swatch-${bucket}`} aria-hidden />
+                  <div>
+                    <strong>{BUCKET_LABEL[bucket]}</strong>
+                    <div className="mix-meta">
+                      {mixMetric(bucket, chartCategories)}
+                    </div>
+                  </div>
+                  <div className="mix-nums">
+                    <div className="mix-amt">{money(ytd[bucket])}</div>
+                    <div className="mix-meta">{formatPct(ytd[bucket], total)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <PieChart
+              slices={mixBuckets.map((id) => ({
+                id,
+                name: BUCKET_LABEL[id],
+                color: COLORS[id],
+                value: ytd[id],
+              }))}
+              formatValue={(n) => money(n)}
+              formatShare={formatPct}
+              center={money(total)}
+              centerLabel="in this range"
             />
-          ))}
-        </div>
-        <StackedBars
-          labels={labels}
-          series={chartSeries}
-          formatValue={(n) => money(n)}
-          reference={
-            avg
-              ? { value: avg, label: `Avg ${money(avg)}` }
-              : undefined
-          }
-        />
+          </div>
+        )}
       </section>
 
       <section>
@@ -235,7 +266,11 @@ export function Dashboard(props: {
 
       <section>
         <h2>Spending over time</h2>
-        <p className="lede">Fixed, guilt-free, and anything still untagged.</p>
+        <p className="lede">
+          {ytd.unmapped !== 0
+            ? "Fixed, guilt-free, and anything still untagged."
+            : "Fixed and guilt-free spending."}
+        </p>
         <LineChart
           labels={labels}
           series={[
@@ -255,12 +290,16 @@ export function Dashboard(props: {
                 sumActivity(m, chartCategories, "guilt_free"),
               ),
             },
-            {
-              id: "unmapped",
-              name: BUCKET_LABEL.unmapped,
-              color: COLORS.unmapped,
-              data: series.map((row) => row.buckets.unmapped),
-            },
+            ...(ytd.unmapped !== 0
+              ? [
+                  {
+                    id: "unmapped" as const,
+                    name: BUCKET_LABEL.unmapped,
+                    color: COLORS.unmapped,
+                    data: series.map((row) => row.buckets.unmapped),
+                  },
+                ]
+              : []),
           ]}
           formatValue={(n) => money(n)}
         />
@@ -271,7 +310,7 @@ export function Dashboard(props: {
           month={month}
           months={months}
           categories={chartCategories}
-          buckets={shownBuckets}
+          buckets={mixBuckets}
           money={money}
           monthId={month.month}
           onMonth={setMonthId}
@@ -285,6 +324,22 @@ export function Dashboard(props: {
       />
     </div>
   );
+}
+
+function mixMetric(
+  bucket: ShownBucket,
+  categories: ResolvedCategory[],
+): string {
+  if (bucket === "unmapped") return "Assigned or Spent";
+  const used = new Set(
+    categories.filter((c) => c.bucket === bucket).map((c) => c.metric),
+  );
+  if (used.size === 0) {
+    return DEFAULT_METRIC[bucket] === "assigned" ? "Assigned" : "Spent";
+  }
+  const [only] = used;
+  if (used.size > 1) return "Mixed";
+  return only === "assigned" ? "Assigned" : "Spent";
 }
 
 function Stat(props: { value: string; label: string; tone?: string }) {

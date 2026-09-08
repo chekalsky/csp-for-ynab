@@ -4,7 +4,7 @@ import { isPlaceholderClientId, loadConfig } from "./config";
 import { Dashboard } from "./Dashboard";
 import { resolveCategory } from "./mapping";
 import { buildAuthorizeUrl, captureOauthHash, tokenIsFresh } from "./oauth";
-import { BootError, ConnectPage, PrivacyPage } from "./pages";
+import { BootError, ConnectPage, PrivacyPage, Attribution, CspName } from "./pages";
 import { filterMonths, monthIdsInRange, utcMonthStart } from "./range";
 import {
   emptyOverrides,
@@ -28,10 +28,21 @@ import type {
 
 const CURRENT_MONTH_TTL_MS = 15 * 60 * 1000;
 
+const SITE = "https://csp-for-ynab.chekalsky.com";
+
 export function App() {
-  if (window.location.pathname.replace(/\/$/, "") === "/privacy") {
-    return <PrivacyPage />;
-  }
+  const privacy = window.location.pathname.replace(/\/$/, "") === "/privacy";
+  useEffect(() => {
+    document.title = privacy
+      ? "Privacy · Conscious Spending Plan for YNAB"
+      : "Conscious Spending Plan for YNAB";
+    const canonical =
+      document.querySelector<HTMLLinkElement>("link[rel='canonical']") ??
+      document.head.appendChild(document.createElement("link"));
+    canonical.rel = "canonical";
+    canonical.href = privacy ? `${SITE}/privacy` : `${SITE}/`;
+  }, [privacy]);
+  if (privacy) return <PrivacyPage />;
   return <Shell />;
 }
 
@@ -45,7 +56,7 @@ function Shell() {
   const [planId, setPlanId] = useState<string | null>(null);
   const [plan, setPlan] = useState<CachedPlan | null>(null);
   const [overrides, setOverrides] = useState<PlanOverrides>(emptyOverrides());
-  const [range, setRange] = useState<DateRange>({ id: "this_year" });
+  const [range, setRange] = useState<DateRange>({ id: "last_12" });
   const [loading, setLoading] = useState(false);
   const [fetchingMore, setFetchingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -276,7 +287,9 @@ function Shell() {
     <div className="shell">
       <header className="top">
         <div className="brand">
-          <span className="eyebrow">Conscious Spending Plan for YNAB</span>
+          <span className="eyebrow">
+            Conscious Spending Plan for YNAB
+          </span>
           {plans.length > 1 ? (
             <label>
               <span className="sr-only">Plan</span>
@@ -292,7 +305,7 @@ function Shell() {
               </select>
             </label>
           ) : (
-            <strong>{plan?.planName ?? plans[0]?.name ?? "YNAB"}</strong>
+            <strong>{plan?.planName ?? plans[0]?.name ?? "<plans>"}</strong>
           )}
         </div>
         <nav className="top-nav">
@@ -328,6 +341,7 @@ function Shell() {
           Client ID is still the placeholder. Set it in config.json.
         </p>
       )}
+      <Attribution />
     </div>
   );
 }

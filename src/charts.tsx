@@ -186,6 +186,130 @@ export function StackedBars(props: {
   );
 }
 
+export type PieSlice = {
+  id: string;
+  name: string;
+  color: string;
+  value: number;
+};
+
+function polar(cx: number, cy: number, r: number, a: number) {
+  return [cx + r * Math.cos(a), cy + r * Math.sin(a)] as const;
+}
+
+function donutPath(
+  cx: number,
+  cy: number,
+  rOut: number,
+  rIn: number,
+  start: number,
+  end: number,
+) {
+  const [x0, y0] = polar(cx, cy, rOut, start);
+  const [x1, y1] = polar(cx, cy, rOut, end);
+  const [x2, y2] = polar(cx, cy, rIn, end);
+  const [x3, y3] = polar(cx, cy, rIn, start);
+  const large = end - start > Math.PI ? 1 : 0;
+  return `M ${x0} ${y0} A ${rOut} ${rOut} 0 ${large} 1 ${x1} ${y1} L ${x2} ${y2} A ${rIn} ${rIn} 0 ${large} 0 ${x3} ${y3} Z`;
+}
+
+export function PieChart(props: {
+  slices: PieSlice[];
+  formatValue: (v: number) => string;
+  formatShare: (v: number, of: number) => string;
+  center?: string;
+  centerLabel?: string;
+}) {
+  const { slices, formatValue, formatShare, center, centerLabel } = props;
+  const [tip, setTip] = useState<Tooltip | null>(null);
+  const total = slices.reduce((s, x) => s + Math.max(0, x.value), 0);
+  const drawn = slices.filter((s) => s.value > 0);
+  const cx = 100;
+  const cy = 100;
+  const rOut = 92;
+  const rIn = 58;
+  const tau = Math.PI * 2;
+  let angle = -Math.PI / 2;
+  const arcs =
+    drawn.length === 0
+      ? [
+          <circle
+            key="empty"
+            cx={cx}
+            cy={cy}
+            r={(rOut + rIn) / 2}
+            fill="none"
+            stroke="var(--line)"
+            strokeWidth={rOut - rIn}
+          />,
+        ]
+      : drawn.flatMap((slice) => {
+          const sweep = total === 0 ? 0 : (slice.value / total) * tau;
+          const start = angle;
+          const end = angle + sweep;
+          angle = end;
+          const paths =
+            sweep >= tau - 1e-6
+              ? [
+                  donutPath(cx, cy, rOut, rIn, start, start + Math.PI),
+                  donutPath(cx, cy, rOut, rIn, start + Math.PI, start + tau),
+                ]
+              : [donutPath(cx, cy, rOut, rIn, start, end)];
+          return paths.map((d, i) => (
+            <path
+              key={`${slice.id}-${i}`}
+              d={d}
+              fill={slice.color}
+              onMouseMove={(ev) => {
+                const rect = ev.currentTarget.ownerSVGElement?.getBoundingClientRect();
+                if (!rect) return;
+                setTip({
+                  x: ev.clientX - rect.left,
+                  y: ev.clientY - rect.top,
+                  label: slice.name,
+                  lines: [
+                    `${formatValue(slice.value)} · ${formatShare(slice.value, total)}`,
+                  ],
+                });
+              }}
+            />
+          ));
+        });
+
+  return (
+    <div className="pie-wrap">
+      <svg
+        viewBox="0 0 200 200"
+        className="chart pie"
+        role="img"
+        aria-label={slices
+          .map(
+            (s) =>
+              `${s.name} ${formatValue(s.value)} ${formatShare(s.value, total)}`,
+          )
+          .join(". ")}
+        onMouseLeave={() => setTip(null)}
+      >
+        {arcs}
+      </svg>
+      {(center || centerLabel) && (
+        <div className="pie-center">
+          {center && <div className="stat-value">{center}</div>}
+          {centerLabel && <div className="stat-label">{centerLabel}</div>}
+        </div>
+      )}
+      {tip && (
+        <div className="chart-tip" style={{ left: tip.x, top: tip.y }}>
+          <strong>{tip.label}</strong>
+          {tip.lines.map((line) => (
+            <div key={line}>{line}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ChartLegend(props: { series: Series[] }) {
   return (
     <ul className="chart-legend">

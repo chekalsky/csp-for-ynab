@@ -60,3 +60,16 @@ export function monthFull(month: string): string {
     timeZone: "UTC",
   });
 }
+
+export function monthSpanLabel(fromMonth: string, toMonth: string): string {
+  if (fromMonth === toMonth) return monthFull(fromMonth);
+  const [y, m] = fromMonth.split("-").map(Number);
+  const fromDate = new Date(Date.UTC(y, m - 1, 1));
+  const sameYear = fromMonth.slice(0, 4) === toMonth.slice(0, 4);
+  const fromPart = fromDate.toLocaleDateString(undefined, {
+    month: "long",
+    year: sameYear ? undefined : "numeric",
+    timeZone: "UTC",
+  });
+  return `${fromPart} – ${monthFull(toMonth)}`;
+}
