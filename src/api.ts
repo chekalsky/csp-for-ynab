@@ -206,7 +206,7 @@ async function mapPool<T, R>(
   return out;
 }
 
-async function fetchMonthDetails(
+export async function fetchMonthDetails(
   token: string,
   kind: ApiKind,
   planId: string,
@@ -243,7 +243,7 @@ export async function ensureMonths(
   return [...byId.values()].sort((a, b) => a.month.localeCompare(b.month));
 }
 
-const EAGER_MONTHS = 48;
+const EAGER_MONTHS = 12;
 
 export async function loadPlan(
   token: string,

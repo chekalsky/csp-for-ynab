@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, ensureMonths, listPlans, loadPlan, pickInitialPlanId, type ApiKind } from "./api";
+import { ApiError, ensureMonths, fetchMonthDetails, listPlans, loadPlan, pickInitialPlanId, type ApiKind } from "./api";
 import { isPlaceholderClientId, loadConfig } from "./config";
 import { Dashboard } from "./Dashboard";
 import { resolveCategory } from "./mapping";
 import { buildAuthorizeUrl, captureOauthHash, tokenIsFresh } from "./oauth";
 import { BootError, ConnectPage, PrivacyPage } from "./pages";
-import { filterMonths, monthIdsInRange } from "./range";
+import { filterMonths, monthIdsInRange, utcMonthStart } from "./range";
 import {
   emptyOverrides,
   getCache,
-  getOverrides,
+  getPlanOverrides,
   getSelectedPlanId,
   getToken,
   setCache,
@@ -25,6 +25,8 @@ import type {
   PlanSummary,
   TokenRecord,
 } from "./types";
+
+const CURRENT_MONTH_TTL_MS = 15 * 60 * 1000;
 
 export function App() {
   if (window.location.pathname.replace(/\/$/, "") === "/privacy") {
@@ -122,7 +124,7 @@ function Shell() {
     const summary = plans.find((p) => p.id === planId);
     if (!summary) return;
     setSelectedPlanId(planId);
-    setOverrides(getOverrides()[planId] ?? emptyOverrides());
+    setOverrides(getPlanOverrides(planId));
     setLoading(true);
     setError(null);
     void hydratePlan(token, summary, false)
@@ -131,6 +133,42 @@ function Shell() {
       })
       .finally(() => setLoading(false));
   }, [token, planId, plans, hydratePlan]);
+
+  useEffect(() => {
+    if (!token || !plan) return;
+    const current = utcMonthStart();
+    const haveCurrent = plan.months.some(
+      (m) => m.month === current && Object.keys(m.amounts).length > 0,
+    );
+    if (
+      haveCurrent &&
+      Date.now() - (plan.fetchedAt || 0) < CURRENT_MONTH_TTL_MS
+    ) {
+      return;
+    }
+    const id = plan.planId;
+    let cancelled = false;
+    void fetchMonthDetails(token.accessToken, kind, id, [current]).then((rows) => {
+      if (cancelled || rows.length === 0) return;
+      setPlan((prev) => {
+        if (!prev || prev.planId !== id) return prev;
+        const byId = new Map(prev.months.map((m) => [m.month, m]));
+        for (const row of rows) byId.set(row.month, row);
+        const months = [...byId.values()].sort((a, b) =>
+          a.month.localeCompare(b.month),
+        );
+        const monthIds = prev.monthIds.includes(current)
+          ? prev.monthIds
+          : [...prev.monthIds, current].sort();
+        const next = { ...prev, months, monthIds, fetchedAt: Date.now() };
+        setCache(next);
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, plan?.planId, kind]);
 
   useEffect(() => {
     if (!token || !plan) return;

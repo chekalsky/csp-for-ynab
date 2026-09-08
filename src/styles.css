@@ -104,6 +104,47 @@ code {
   color: var(--guilt);
 }
 
+.legal {
+  color: #809188;
+  font-size: 0.8rem;
+  margin: 0.85rem 0 0;
+  max-width: 40rem;
+}
+
+.legal p {
+  margin: 0 0 0.5rem;
+}
+
+.legal a {
+  color: inherit;
+}
+
+.ynab-badge {
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.ynab-badge img {
+  height: 2.5rem;
+  width: auto;
+}
+
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin: 0 0 0.4rem;
+}
+
+.masthead .eyebrow {
+  margin-bottom: 0.35rem;
+}
+
+.masthead h1 {
+  margin-bottom: 0;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -192,12 +233,21 @@ code {
 
 .cta {
   display: inline-block;
-  margin: 0.5rem 0 1rem;
+  margin: 0;
   background: var(--ink);
   color: var(--sheet);
   text-decoration: none;
   padding: 0.7rem 1.1rem;
   font-weight: 600;
+}
+
+.cta-block {
+  margin: 0.5rem 0 0;
+}
+
+.cta-block .fine {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
 }
 
 .cta:hover {

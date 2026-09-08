@@ -6,15 +6,15 @@ import type {
 
 const TOKEN = "ynab-csp.token";
 const PLAN = "ynab-csp.planId";
-const OVERRIDES = "ynab-csp.overrides";
+const OVERRIDES_PREFIX = "ynab-csp.overrides.";
 const CACHE_PREFIX = "ynab-csp.cache.";
 const OAUTH_STATE = "ynab-csp.oauthState";
 const EXCLUDE_INVEST = "ynab-csp.excludeInvestments";
 const PREFIX = "ynab-csp.";
 
-function readJson<T>(key: string): T | null {
+function readJson<T>(store: Storage, key: string): T | null {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = store.getItem(key);
     if (!raw) return null;
     return JSON.parse(raw) as T;
   } catch {
@@ -22,14 +22,24 @@ function readJson<T>(key: string): T | null {
   }
 }
 
-export function getToken(): TokenRecord | null {
-  const rec = readJson<TokenRecord>(TOKEN);
+function asToken(rec: TokenRecord | null): TokenRecord | null {
   if (!rec?.accessToken || typeof rec.expiresAt !== "number") return null;
   return rec;
 }
 
+export function getToken(): TokenRecord | null {
+  const fresh = asToken(readJson<TokenRecord>(sessionStorage, TOKEN));
+  if (fresh) return fresh;
+  const legacy = asToken(readJson<TokenRecord>(localStorage, TOKEN));
+  if (!legacy) return null;
+  sessionStorage.setItem(TOKEN, JSON.stringify(legacy));
+  localStorage.removeItem(TOKEN);
+  return legacy;
+}
+
 export function setToken(rec: TokenRecord): void {
-  localStorage.setItem(TOKEN, JSON.stringify(rec));
+  sessionStorage.setItem(TOKEN, JSON.stringify(rec));
+  localStorage.removeItem(TOKEN);
 }
 
 export function getSelectedPlanId(): string | null {
@@ -40,25 +50,26 @@ export function setSelectedPlanId(id: string): void {
   localStorage.setItem(PLAN, id);
 }
 
-export function getOverrides(): Record<string, PlanOverrides> {
-  const raw = readJson<Record<string, PlanOverrides>>(OVERRIDES) ?? {};
-  for (const rec of Object.values(raw)) {
-    if (!rec.groups) rec.groups = {};
-    if (!rec.buckets) rec.buckets = {};
-    if (!rec.metrics) rec.metrics = {};
-    if (!rec.bucketMetrics) rec.bucketMetrics = {};
-  }
-  return raw;
+export function emptyOverrides(): PlanOverrides {
+  return { buckets: {}, groups: {}, metrics: {}, bucketMetrics: {} };
+}
+
+function asOverrides(rec: PlanOverrides | null): PlanOverrides {
+  if (!rec) return emptyOverrides();
+  return {
+    buckets: rec.buckets ?? {},
+    groups: rec.groups ?? {},
+    metrics: rec.metrics ?? {},
+    bucketMetrics: rec.bucketMetrics ?? {},
+  };
+}
+
+export function getPlanOverrides(planId: string): PlanOverrides {
+  return asOverrides(readJson<PlanOverrides>(localStorage, OVERRIDES_PREFIX + planId));
 }
 
 export function setPlanOverrides(planId: string, overrides: PlanOverrides): void {
-  const all = getOverrides();
-  all[planId] = overrides;
-  localStorage.setItem(OVERRIDES, JSON.stringify(all));
-}
-
-export function emptyOverrides(): PlanOverrides {
-  return { buckets: {}, groups: {}, metrics: {}, bucketMetrics: {} };
+  localStorage.setItem(OVERRIDES_PREFIX + planId, JSON.stringify(overrides));
 }
 
 export function getExcludeInvestments(): boolean {
@@ -70,7 +81,7 @@ export function setExcludeInvestments(value: boolean): void {
 }
 
 export function getCache(planId: string): CachedPlan | null {
-  const rec = readJson<CachedPlan>(CACHE_PREFIX + planId);
+  const rec = readJson<CachedPlan>(localStorage, CACHE_PREFIX + planId);
   if (!rec?.planId || !Array.isArray(rec.months) || !Array.isArray(rec.categories)) {
     return null;
   }
@@ -101,5 +112,6 @@ export function wipeAll(): void {
     if (key?.startsWith(PREFIX)) keys.push(key);
   }
   for (const key of keys) localStorage.removeItem(key);
+  sessionStorage.removeItem(TOKEN);
   sessionStorage.removeItem(OAUTH_STATE);
 }

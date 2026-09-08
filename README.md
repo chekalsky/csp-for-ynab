@@ -8,7 +8,7 @@ Your financial data never leaves your browser.
 
 ## Try Live With No Setup
 
-[ynab-csp.chekalsky.com](https://ynab-csp.chekalsky.com/) · [Privacy](https://ynab-csp.chekalsky.com/privacy)
+[csp-for-ynab.chekalsky.com](https://csp-for-ynab.chekalsky.com/) · [Privacy](https://csp-for-ynab.chekalsky.com/privacy)
 
 Connect with YNAB (read-only), map categories to the four buckets, and enjy the charts. Nothing is written back to YNAB.
 
@@ -29,7 +29,8 @@ OAuth is how YNAB shares access without you handing over a password. Every app n
 
 1. Log in to YNAB, open [Developer Settings](https://app.ynab.com/settings/developer), and [New Application](https://app.ynab.com/oauth/applications/new).
 2. Set **Redirect URI(s)** (trailing slash required). Register every origin you will use:
-   - `http://localhost:5173`
+   - `http://localhost:5173/`
+   - `https://csp-for-ynab.chekalsky.com/`
 3. Enable **Default plan selection** so the authorize screen picks the plan this app opens.
 4. Copy the **Client ID** only. This app uses the [Implicit Grant](https://api.ynab.com/#oauth-implicit-grant) (`response_type=token`, `scope=read-only`). Tokens last about two hours. There is no refresh token and no Client Secret.
 
