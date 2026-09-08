@@ -238,7 +238,7 @@ function Shell() {
     <div className="shell">
       <header className="top">
         <div className="brand">
-          <span className="eyebrow">Conscious spending</span>
+          <span className="eyebrow">Conscious Spending Plan for YNAB</span>
           {plans.length > 1 ? (
             <label>
               <span className="sr-only">Plan</span>

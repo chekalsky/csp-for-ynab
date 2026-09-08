@@ -1,4 +1,4 @@
-# YNAB × CSP
+# Conscious Spending Plan for YNAB
 
 See a [YNAB](https://www.ynab.com/) plan as [Ramit Sethi’s](https://www.iwillteachyoutoberich.com/blog/conscious-spending-plan/) four Conscious Spending buckets: **Fixed Costs**, **Investments**, **Savings**, and **Guilt-free spending**.
 

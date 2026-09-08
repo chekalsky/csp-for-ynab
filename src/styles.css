@@ -96,6 +96,14 @@ code {
   padding: 1rem;
 }
 
+.byline {
+  margin: 1.75rem 0 0;
+}
+
+.heart {
+  color: var(--guilt);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

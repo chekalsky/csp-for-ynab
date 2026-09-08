@@ -9,7 +9,7 @@ export function ConnectPage(props: {
   const placeholder = isPlaceholderClientId(props.config.ynabClientId);
   return (
     <main className="connect">
-      <p className="eyebrow">YNAB × Conscious Spending Plan</p>
+      <p className="eyebrow">Conscious Spending Plan for YNAB</p>
       <h1>See your plan as four buckets.</h1>
       <p className="lede">
         Ramit Sethi’s Conscious Spending Plan is simple: fund the boring stuff,
@@ -72,6 +72,11 @@ export function ConnectPage(props: {
         connect again. We do not track or collect personal information.{" "}
         <a href="/privacy">Privacy</a>
       </p>
+      <p className="fine byline">
+        Created with <span className="heart" aria-label="love">♥</span> in
+        Amsterdam by{" "}
+        <a href="https://chekalsky.com">Ilya Chekalsky</a>
+      </p>
     </main>
   );
 }
@@ -80,7 +85,7 @@ export function PrivacyPage() {
   return (
     <main className="doc">
       <p className="eyebrow">
-        <a href="/">YNAB CSP</a>
+        <a href="/">Conscious Spending Plan for YNAB</a>
       </p>
       <h1>Privacy</h1>
       <p>
@@ -90,21 +95,15 @@ export function PrivacyPage() {
       <h2>What we ask YNAB for</h2>
       <p>
         Read-only access: the list of plans, category groups, category names and
-        notes, and monthly Assigned (<code>budgeted</code>) and Activity (
-        <code>activity</code>) amounts. We do not request write access. We do
-        not read the transaction register.
+        notes, and monthly Assigned and Activity amounts. We do not request write access. We do not read the transaction register.
       </p>
       <h2>Where data lives</h2>
       <p>
-        It stores YNAB access token, a cache, and your bucket
-        overrides in <code>localStorage</code> on this device. Money data never sent anywhere.
+        App stores YNAB access token and your bucket data in <code>localStorage</code> on this device without uploading it anywhere.
       </p>
       <h2>How to wipe it</h2>
       <p>
-        Use Reset all to sign out and wipe the token, cache, and bucket
-        overrides on this device. You can also clear this site’s data in your
-        browser, or revoke the app in YNAB → Account Settings → Developer
-        Settings.
+        Use <code>Reset all</code> to sign out and wipe all app's data from this device. You can also revoke the app in YNAB → Account Settings → Authorized Applications.
       </p>
       <p className="fine">
         <a href="/">Back</a>
