@@ -36,7 +36,7 @@ export function rangeBounds(
 
   switch (range.id) {
     case "all":
-      return null;
+      return { start: first ?? current, end: endCap };
     case "this_year": {
       const start = `${now.getUTCFullYear()}-01-01`;
       return { start, end: endCap };

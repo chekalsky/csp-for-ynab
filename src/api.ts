@@ -1,4 +1,5 @@
 import { FALLBACK_CURRENCY } from "./format";
+import { utcMonthStart } from "./range";
 import type {
   CachedCategory,
   CachedMonth,
@@ -282,7 +283,9 @@ export async function loadPlan(
     .filter(Boolean)
     .sort();
 
-  const eager = monthIds.slice(-EAGER_MONTHS);
+  const current = utcMonthStart();
+  const throughNow = monthIds.filter((id) => id <= current);
+  const eager = (throughNow.length > 0 ? throughNow : monthIds).slice(-EAGER_MONTHS);
   const fetched = await fetchMonthDetails(token, kind, summary.id, eager);
 
   const settings = asRecord(asRecord(asRecord(settingsBody)?.data)?.settings);

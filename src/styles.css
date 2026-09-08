@@ -674,6 +674,48 @@ select {
   background: var(--warn-bg);
 }
 
+.month-table {
+  table-layout: fixed;
+}
+
+.month-table .col-group {
+  width: 24%;
+}
+
+.month-table .col-metric {
+  width: 8.5rem;
+}
+
+.month-table .col-amt {
+  width: 7.25rem;
+}
+
+.month-table thead th {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.month-table .bucket-row th {
+  padding: 1.15rem 0.45rem 0.45rem;
+  font-family: ui-serif, "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.month-table .metric {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.month-table td:nth-child(1),
+.month-table td:nth-child(2) {
+  overflow-wrap: anywhere;
+}
+
 .cat-name {
   font-weight: 600;
 }
@@ -708,10 +750,20 @@ select {
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
-.chart-ref {
+.chart-bar-pct {
+  fill: #fff;
+  font-size: 8px;
+  font-weight: 600;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  paint-order: stroke fill;
+  stroke: rgba(19, 32, 25, 0.45);
+  stroke-width: 2.25;
+}
+
+.chart-hover {
   stroke: var(--ink);
-  stroke-dasharray: 4 3;
   stroke-width: 1;
+  opacity: 0.35;
 }
 
 .chart-tip {

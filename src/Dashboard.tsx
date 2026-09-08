@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { LineChart, PieChart, StackedBars } from "./charts";
-import { formatMoney, formatPct, monthFull, monthLabel, monthSpanLabel } from "./format";
+import { formatCompact, formatMoney, formatPct, monthFull, monthLabel, monthSpanLabel } from "./format";
 import {
   bucketsTotal,
   monthSeries,
@@ -51,6 +51,7 @@ export function Dashboard(props: {
   rangeReady: boolean;
   rangeMessage: string | null;
   error: string | null;
+  rateLimited: boolean;
   overrides: PlanOverrides;
   onOverrides: (next: PlanOverrides) => void;
 }) {
@@ -65,6 +66,7 @@ export function Dashboard(props: {
     rangeReady,
     rangeMessage,
     error,
+    rateLimited,
     overrides,
     onOverrides,
   } = props;
@@ -75,7 +77,7 @@ export function Dashboard(props: {
     if (excludeInvestments && c.bucket === "investments") return false;
     return true;
   });
-  const money = (n: number, digits = 0) => formatMoney(n, plan.currency, digits);
+  const money = (n: number) => formatMoney(n, plan.currency);
   const withYear = spansYears(months);
   const labels = months.map((m) => monthLabel(m.month, withYear));
   const series = useMemo(
@@ -138,7 +140,7 @@ export function Dashboard(props: {
                   key={id}
                   type="button"
                   className={range.id === id ? "chip on" : "chip"}
-                  disabled={!cached && range.id !== id}
+                  disabled={!cached && range.id !== id && rateLimited}
                   onClick={() => pickRange(id)}
                 >
                   {label}
@@ -217,11 +219,10 @@ export function Dashboard(props: {
         <h1>Your Conscious Spending</h1>
         {mixDates && <p className="mix-dates">{mixDates}</p>}
         <p className="lede">
-          Every category except Ignore.
           {ytd.unmapped !== 0
-            ? " Untagged ones sit in Needs a bucket until you map them."
+            ? "Untagged categories sit in \"Needs a bucket\" until you map them."
             : ""}{" "}
-          Assigned or Spent follows the tags below.
+          You can set up whether to use Money Assigned or Money Spent below.
         </p>
         {months.length > 0 && (
           <div className="mix-layout">
@@ -267,7 +268,6 @@ export function Dashboard(props: {
 
       <section>
         <h2>Mix of the month</h2>
-        <p className="lede">Share of each month, 100% stacked.</p>
         <StackedBars
           labels={labels}
           series={chartSeries}
@@ -279,11 +279,6 @@ export function Dashboard(props: {
 
       <section>
         <h2>Spending over time</h2>
-        <p className="lede">
-          {ytd.unmapped !== 0
-            ? "Fixed, guilt-free, and anything still untagged."
-            : "Fixed and guilt-free spending."}
-        </p>
         <LineChart
           labels={labels}
           series={[
@@ -315,6 +310,7 @@ export function Dashboard(props: {
               : []),
           ]}
           formatValue={(n) => money(n)}
+          formatTick={(n) => formatCompact(n, plan.currency)}
         />
       </section>
 
@@ -428,7 +424,7 @@ function MonthDrill(props: {
         {rows.map((r) => (
           <Stat
             key={r.bucket}
-            value={money(r.total, 2)}
+            value={money(r.total)}
             label={`${BUCKET_LABEL[r.bucket]} · ${formatPct(r.total, life)}`}
             tone={
               r.bucket === "guilt_free"
@@ -440,14 +436,15 @@ function MonthDrill(props: {
           />
         ))}
       </div>
-      {rows
-        .filter((r) => r.cats.length > 0)
-        .map((r) => (
-        <div key={r.bucket} className="group-block">
-          <h3>
-            {BUCKET_LABEL[r.bucket]} — {money(r.total, 2)}
-          </h3>
-          <table className="cat-table">
+      {rows.some((r) => r.cats.length > 0) && (
+        <div className="group-block">
+          <table className="cat-table month-table">
+            <colgroup>
+              <col className="col-group" />
+              <col />
+              <col className="col-metric" />
+              <col className="col-amt" />
+            </colgroup>
             <thead>
               <tr>
                 <th>Group</th>
@@ -456,25 +453,34 @@ function MonthDrill(props: {
                 <th className="num">Amount</th>
               </tr>
             </thead>
-            <tbody>
-              {r.cats.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.groupName}</td>
-                  <td>{c.name}</td>
-                  <td>
-                    {c.bucket === "unmapped"
-                      ? "Assigned or Spent"
-                      : c.metric === "assigned"
-                        ? "Assigned"
-                        : "Spent"}
-                  </td>
-                  <td className="num">{money(c.value, 2)}</td>
-                </tr>
+            {rows
+              .filter((r) => r.cats.length > 0)
+              .map((r) => (
+                <tbody key={r.bucket}>
+                  <tr className="bucket-row">
+                    <th colSpan={4}>
+                      {BUCKET_LABEL[r.bucket]} — {money(r.total)}
+                    </th>
+                  </tr>
+                  {r.cats.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.groupName}</td>
+                      <td>{c.name}</td>
+                      <td className="metric">
+                        {c.bucket === "unmapped"
+                          ? "Assigned or Spent"
+                          : c.metric === "assigned"
+                            ? "Assigned"
+                            : "Spent"}
+                      </td>
+                      <td className="num">{money(c.value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
               ))}
-            </tbody>
           </table>
         </div>
-      ))}
+      )}
     </section>
   );
 }

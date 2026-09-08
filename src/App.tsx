@@ -302,6 +302,8 @@ function Shell() {
             if (result.rateLimited) {
               setRateLimited(true);
               setError(RATE_LIMIT_CACHED);
+            } else {
+              setRateLimited(false);
             }
           } finally {
             setFetchingMore(false);
@@ -415,6 +417,7 @@ function Shell() {
           rangeReady={rangeReady}
           rangeMessage={rangeMessage}
           error={error}
+          rateLimited={rateLimited}
           overrides={overrides}
           onOverrides={saveOverrides}
         />

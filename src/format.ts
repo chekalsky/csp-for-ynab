@@ -15,25 +15,59 @@ export function milliToUnits(milliunits: number): number {
   return milliunits / 1000;
 }
 
+function groupInt(digits: string, sep: string): string {
+  if (!sep) return digits;
+  let out = "";
+  for (let i = digits.length; i > 0; i -= 3) {
+    const chunk = digits.slice(Math.max(0, i - 3), i);
+    out = out ? chunk + sep + out : chunk;
+  }
+  return out;
+}
+
+export function formatNumber(
+  amount: number,
+  currency: CurrencyFormat,
+  digits?: number,
+): string {
+  const fraction = digits ?? currency.decimal_digits;
+  const abs = Math.abs(amount);
+  const [intRaw, fracRaw] = abs.toFixed(fraction).split(".");
+  const grouped = groupInt(intRaw, currency.group_separator);
+  const body =
+    fraction > 0
+      ? `${grouped}${currency.decimal_separator}${fracRaw}`
+      : grouped;
+  return amount < 0 ? `-${body}` : body;
+}
+
 export function formatMoney(
   milliunits: number,
   currency: CurrencyFormat,
   digits?: number,
 ): string {
   const amount = milliToUnits(milliunits);
-  const fraction = digits ?? Math.min(2, currency.decimal_digits);
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: currency.iso_code || "EUR",
-      currencyDisplay: currency.display_symbol ? "symbol" : "code",
-      minimumFractionDigits: fraction,
-      maximumFractionDigits: fraction,
-    }).format(amount);
-  } catch {
-    const sign = amount < 0 ? "−" : "";
-    return `${sign}${currency.currency_symbol}${Math.abs(amount).toFixed(fraction)}`;
+  const num = formatNumber(amount, currency, digits);
+  const negative = num.startsWith("-");
+  const absNum = negative ? num.slice(1) : num;
+  const symbol = currency.display_symbol ? currency.currency_symbol : "";
+  const withSymbol = symbol
+    ? currency.symbol_first
+      ? `${symbol}${absNum}`
+      : `${absNum} ${symbol}`
+    : absNum;
+  return negative ? `-${withSymbol}` : withSymbol;
+}
+
+export function formatCompact(amount: number, currency: CurrencyFormat): string {
+  const abs = Math.abs(amount);
+  if (abs >= 1_000_000) {
+    return `${formatNumber(amount / 1_000_000, currency, 1)}m`;
   }
+  if (abs >= 1000) {
+    return `${formatNumber(Math.round(amount / 1000), currency, 0)}k`;
+  }
+  return formatNumber(Math.round(amount), currency, 0);
 }
 
 export function formatPct(part: number, of: number): string {
