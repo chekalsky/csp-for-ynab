@@ -9,11 +9,10 @@ export function ConnectPage(props: {
   const placeholder = isPlaceholderClientId(props.config.ynabClientId);
   return (
     <main className="connect">
-      <p className="eyebrow">YNAB · Conscious Spending Plan</p>
-      <h1>See your plan as four buckets.</h1>
+      <p className="eyebrow">YNAB × Conscious Spending Plan</p>
+      <h1>See your plan as four Ramit Sethi's buckets.</h1>
       <p className="lede">
-        Fixed costs, investments, savings, guilt-free. Your numbers stay in this
-        browser. Nothing is written back to YNAB.
+        Fixed costs, investments, savings, and guilt-free spending. Your data never leaves your browser. Nothing is written back to YNAB.
       </p>
       {props.error && <p className="banner err">{props.error}</p>}
       {placeholder ? (
@@ -32,7 +31,7 @@ export function ConnectPage(props: {
         </a>
       )}
       <p className="fine">
-        Read-only access. The token lasts about two hours, then you connect
+        Read-only access. The token lasts about two hours, then you need to connect
         again. <a href="/privacy">Privacy</a>
       </p>
     </main>
@@ -48,8 +47,7 @@ export function PrivacyPage() {
       <h1>Privacy</h1>
       <p>
         This app maps a YNAB plan onto Ramit Sethi’s four Conscious Spending
-        buckets. It is a static page. It does not operate a server that stores
-        your budget.
+        buckets. It runs in your browser, data never leaves your computer.
       </p>
       <h2>What we ask YNAB for</h2>
       <p>
@@ -60,23 +58,15 @@ export function PrivacyPage() {
       </p>
       <h2>Where data lives</h2>
       <p>
-        After you approve access, YNAB puts an access token in the URL fragment.
-        This page stores that token, a cache of plan figures, and your bucket
-        overrides in <code>localStorage</code> on this device. Your browser
-        talks to <code>https://api.ynab.com/v1</code> directly. Money data is
-        not sent to us.
+        It stores YNAB access token, a cache, and your bucket
+        overrides in <code>localStorage</code> on this device. Money data never sent anywhere.
       </p>
       <h2>How to wipe it</h2>
       <p>
-        Use Reset to clear cached figures and bucket overrides on this device.
-        Use Disconnect to sign out and wipe the token too. You can also clear
-        this site’s data in your browser, or revoke the app in YNAB → Account
-        Settings → Developer Settings.
-      </p>
-      <h2>Tokens</h2>
-      <p>
-        Implicit-grant tokens expire after about two hours. This app does not
-        use refresh tokens or a Client Secret.
+        Use Reset all to sign out and wipe the token, cache, and bucket
+        overrides on this device. You can also clear this site’s data in your
+        browser, or revoke the app in YNAB → Account Settings → Developer
+        Settings.
       </p>
       <p className="fine">
         <a href="/">Back</a>

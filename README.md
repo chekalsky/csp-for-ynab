@@ -25,11 +25,17 @@ Open http://localhost:5173/
 
 ## Deploy to Cloudflare Pages
 
-1. Build command: `npm run build`
-2. Output directory: `dist`
-3. Add environment variable `YNAB_CLIENT_ID` (your public Client ID). `public/config.json` is gitignored; the build copies the example and injects that ID.
-4. Custom domain: `ynab-csp.chekalsky.com`. After the first deploy, set that origin (and the Pages `*.pages.dev` URL if you use it) as Redirect URIs on the YNAB app.
-5. Do not enable Functions or a worker that proxies YNAB. The browser should keep calling `https://api.ynab.com/v1` itself.
+Push to `main` runs GitHub Actions: build, then Wrangler uploads `dist/`.
+
+Secrets (repo → Settings → Secrets and variables → Actions):
+
+- `YNAB_CLIENT_ID` — public YNAB Client ID, baked into `/config.json`
+- `CLOUDFLARE_API_TOKEN` — [Create token](https://dash.cloudflare.com/profile/api-tokens) with **Account / Cloudflare Pages / Edit**
+- `CLOUDFLARE_ACCOUNT_ID` — from the Cloudflare dashboard URL or `wrangler whoami`
+
+Local: `npm run deploy` (uses `public/config.json` on disk).
+
+Production: `https://ynab-csp.chekalsky.com`.
 
 `public/_redirects` sends `/privacy` and other paths to the SPA. `/config.json` is `Cache-Control: no-store`.
 

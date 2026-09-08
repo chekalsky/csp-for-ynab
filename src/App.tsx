@@ -16,7 +16,6 @@ import {
   setPlanOverrides,
   setSelectedPlanId,
   wipeAll,
-  clearLocalData,
 } from "./storage";
 import type {
   AppConfig,
@@ -177,40 +176,20 @@ function Shell() {
     return filterMonths(plan.months, range, plan.monthIds);
   }, [plan, range]);
 
-  function disconnect() {
+  function resetAll() {
+    if (
+      !window.confirm(
+        "Clear all local data on this device and sign out?",
+      )
+    ) {
+      return;
+    }
     wipeAll();
     setToken(null);
     setPlan(null);
     setPlans([]);
     setPlanId(null);
     setOverrides(emptyOverrides());
-  }
-
-  function resetLocalData() {
-    if (
-      !window.confirm(
-        "Clear cached plan data and bucket overrides on this device? You stay connected.",
-      )
-    ) {
-      return;
-    }
-    clearLocalData();
-    if (planId) setSelectedPlanId(planId);
-    setPlan(null);
-    setOverrides(emptyOverrides());
-    fetchKeyRef.current = "";
-    setDataEpoch((n) => n + 1);
-    if (token && planId) {
-      const summary = plans.find((p) => p.id === planId);
-      if (summary) {
-        setLoading(true);
-        void hydratePlan(token, summary, true)
-          .catch((err: unknown) => {
-            setError(err instanceof Error ? err.message : "Could not reload plan.");
-          })
-          .finally(() => setLoading(false));
-      }
-    }
   }
 
   function saveOverrides(next: PlanOverrides) {
@@ -281,11 +260,8 @@ function Shell() {
         </div>
         <nav className="top-nav">
           <a href="/privacy">Privacy</a>
-          <button type="button" className="text-btn" onClick={resetLocalData}>
-            Reset
-          </button>
-          <button type="button" className="text-btn" onClick={disconnect}>
-            Disconnect
+          <button type="button" className="text-btn" onClick={resetAll}>
+            Reset all
           </button>
         </nav>
       </header>

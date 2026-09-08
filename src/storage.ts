@@ -103,10 +103,3 @@ export function wipeAll(): void {
   for (const key of keys) localStorage.removeItem(key);
   sessionStorage.removeItem(OAUTH_STATE);
 }
-
-/** Clears cache, overrides, and prefs. Keeps the OAuth token. */
-export function clearLocalData(): void {
-  const token = getToken();
-  wipeAll();
-  if (token) setToken(token);
-}
