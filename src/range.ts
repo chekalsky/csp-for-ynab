@@ -75,6 +75,24 @@ export function monthIdsInRange(
   return sorted.filter((id) => id >= bounds.start && id <= bounds.end);
 }
 
+export function cachedMonthIds(months: CachedMonth[]): Set<string> {
+  return new Set(
+    months.filter((m) => Object.keys(m.amounts).length > 0).map((m) => m.month),
+  );
+}
+
+export function rangeComplete(
+  monthIds: string[],
+  months: CachedMonth[],
+  range: DateRange,
+  now = new Date(),
+): boolean {
+  const needed = monthIdsInRange(monthIds, range, now);
+  if (needed.length === 0) return false;
+  const have = cachedMonthIds(months);
+  return needed.every((id) => have.has(id));
+}
+
 export function filterMonths(
   months: CachedMonth[],
   range: DateRange,

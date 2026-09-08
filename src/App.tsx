@@ -5,7 +5,7 @@ import { Dashboard } from "./Dashboard";
 import { resolveCategory } from "./mapping";
 import { buildAuthorizeUrl, captureOauthHash, tokenIsFresh } from "./oauth";
 import { BootError, ConnectPage, PrivacyPage, Attribution } from "./pages";
-import { filterMonths, monthIdsInRange, utcMonthStart } from "./range";
+import { cachedMonthIds, filterMonths, monthIdsInRange, rangeComplete, utcMonthStart } from "./range";
 import {
   emptyOverrides,
   getCache,
@@ -29,6 +29,17 @@ import type {
 } from "./types";
 
 const CURRENT_MONTH_TTL_MS = 15 * 60 * 1000;
+const RATE_LIMIT_WAIT =
+  "YNAB rate-limited this tab. Nothing is cached here yet. Wait a few minutes, then Refresh.";
+const RATE_LIMIT_CACHED =
+  "YNAB rate-limited this tab. Showing what’s already cached. Wait a few minutes, then Refresh.";
+const NO_CACHE_WAIT =
+  "Couldn’t load your plan. Nothing is cached here yet. Wait a few minutes, then Refresh.";
+
+function noCacheError(err: unknown): string {
+  if (err instanceof ApiError && err.status === 429) return RATE_LIMIT_WAIT;
+  return NO_CACHE_WAIT;
+}
 
 const SITE = "https://csp-for-ynab.chekalsky.com";
 
@@ -63,12 +74,8 @@ function Shell() {
   const [fetchingMore, setFetchingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rateLimited, setRateLimited] = useState(false);
   const fromOauthRef = useRef(false);
-  const fetchKeyRef = useRef("");
-
-  useEffect(() => {
-    fetchKeyRef.current = "";
-  }, [planId]);
 
   useEffect(() => {
     const captured = captureOauthHash();
@@ -104,7 +111,7 @@ function Shell() {
         setOauthError("Session expired. Connect again.");
         return;
       }
-      setError(err instanceof Error ? err.message : "Could not list plans.");
+      setError(noCacheError(err));
     } finally {
       setLoading(false);
     }
@@ -119,15 +126,41 @@ function Shell() {
 
   const hydratePlan = useCallback(
     async (access: TokenRecord, summary: PlanSummary, force: boolean) => {
-      const cached = force ? null : getCache(summary.id);
-      if (cached) {
-        setPlan(cached);
-        return cached;
+      if (!force) {
+        const cached = getCache(summary.id);
+        if (cached) {
+          setPlan(cached);
+          return cached;
+        }
       }
-      const loaded = await loadPlan(access.accessToken, kind, summary);
-      setCache(loaded);
-      setPlan(loaded);
-      return loaded;
+      try {
+        const loaded = await loadPlan(access.accessToken, kind, summary);
+        const cached = getCache(summary.id);
+        const byId = new Map((cached?.months ?? []).map((m) => [m.month, m]));
+        for (const row of loaded.plan.months) byId.set(row.month, row);
+        const plan = {
+          ...loaded.plan,
+          months: [...byId.values()].sort((a, b) => a.month.localeCompare(b.month)),
+        };
+        setCache(plan);
+        setPlan(plan);
+        if (loaded.rateLimited) {
+          setRateLimited(true);
+          setError(RATE_LIMIT_CACHED);
+        } else {
+          setRateLimited(false);
+        }
+        return plan;
+      } catch (err) {
+        const cached = getCache(summary.id);
+        if (cached && err instanceof ApiError && err.status === 429) {
+          setPlan(cached);
+          setRateLimited(true);
+          setError(RATE_LIMIT_CACHED);
+          return cached;
+        }
+        throw err;
+      }
     },
     [kind],
   );
@@ -142,7 +175,7 @@ function Shell() {
     setError(null);
     void hydratePlan(token, summary, false)
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Could not load plan.");
+        setError(noCacheError(err));
       })
       .finally(() => setLoading(false));
   }, [token, planId, plans, hydratePlan]);
@@ -161,60 +194,30 @@ function Shell() {
     }
     const id = plan.planId;
     let cancelled = false;
-    void fetchMonthDetails(token.accessToken, kind, id, [current]).then((rows) => {
-      if (cancelled || rows.length === 0) return;
-      setPlan((prev) => {
-        if (!prev || prev.planId !== id) return prev;
-        const byId = new Map(prev.months.map((m) => [m.month, m]));
-        for (const row of rows) byId.set(row.month, row);
-        const months = [...byId.values()].sort((a, b) =>
-          a.month.localeCompare(b.month),
-        );
-        const monthIds = prev.monthIds.includes(current)
-          ? prev.monthIds
-          : [...prev.monthIds, current].sort();
-        const next = { ...prev, months, monthIds, fetchedAt: Date.now() };
-        setCache(next);
-        return next;
-      });
-    });
+    void fetchMonthDetails(token.accessToken, kind, id, [current]).then(
+      (result) => {
+        if (result.rateLimited) setRateLimited(true);
+        if (cancelled || result.months.length === 0) return;
+        setPlan((prev) => {
+          if (!prev || prev.planId !== id) return prev;
+          const byId = new Map(prev.months.map((m) => [m.month, m]));
+          for (const row of result.months) byId.set(row.month, row);
+          const months = [...byId.values()].sort((a, b) =>
+            a.month.localeCompare(b.month),
+          );
+          const monthIds = prev.monthIds.includes(current)
+            ? prev.monthIds
+            : [...prev.monthIds, current].sort();
+          const next = { ...prev, months, monthIds, fetchedAt: Date.now() };
+          setCache(next);
+          return next;
+        });
+      },
+    );
     return () => {
       cancelled = true;
     };
   }, [token, plan?.planId, kind]);
-
-  useEffect(() => {
-    if (!token || !plan) return;
-    const needed = monthIdsInRange(plan.monthIds, range);
-    const have = new Set(
-      plan.months.filter((m) => Object.keys(m.amounts).length > 0).map((m) => m.month),
-    );
-    const missing = needed.filter((id) => !have.has(id));
-    if (missing.length === 0) return;
-    const key = `${plan.planId}:${missing.join(",")}`;
-    if (fetchKeyRef.current === key) return;
-    let cancelled = false;
-    fetchKeyRef.current = key;
-    setFetchingMore(true);
-    void ensureMonths(token.accessToken, kind, plan.planId, missing, plan.months)
-      .then((months) => {
-        if (cancelled) return;
-        const next = { ...plan, months };
-        setCache(next);
-        setPlan(next);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Could not load older months.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setFetchingMore(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [token, plan, range, kind]);
 
   const categories = useMemo(() => {
     if (!plan || !config) return [];
@@ -226,10 +229,20 @@ function Shell() {
     return filterMonths(plan.months, range, plan.monthIds);
   }, [plan, range]);
 
+  const rangeReady = Boolean(
+    plan && rangeComplete(plan.monthIds, plan.months, range),
+  );
+  const rangeMessage =
+    plan && !fetchingMore && !rangeReady && !error
+      ? rateLimited
+        ? "YNAB rate-limited this tab. This range isn’t fully cached. Wait a few minutes, then Refresh."
+        : "This range isn’t fully cached. Refresh to load it."
+      : null;
+
   function resetAll() {
     if (
       !window.confirm(
-        "Clear all local data on this device and sign out?",
+        "Log out and erase everything stored in this browser, including the YNAB cache and your category bucket overrides?",
       )
     ) {
       return;
@@ -241,6 +254,7 @@ function Shell() {
     setPlanId(null);
     setOverrides(emptyOverrides());
     setRange({ id: "last_12" });
+    setRateLimited(false);
   }
 
   function saveOverrides(next: PlanOverrides) {
@@ -255,15 +269,58 @@ function Shell() {
   }
 
   async function refresh() {
-    if (!token || !planId) return;
-    const summary = plans.find((p) => p.id === planId);
-    if (!summary) return;
+    if (!token) return;
     setRefreshing(true);
     setError(null);
     try {
+      if (!planId) {
+        await loadPlans(token, false);
+        return;
+      }
+      const summary = plans.find((p) => p.id === planId);
+      if (!summary) {
+        await loadPlans(token, false);
+        return;
+      }
+      if (plan) {
+        const missing = monthIdsInRange(plan.monthIds, range).filter(
+          (id) => !cachedMonthIds(plan.months).has(id),
+        );
+        if (missing.length > 0) {
+          setFetchingMore(true);
+          try {
+            const result = await ensureMonths(
+              token.accessToken,
+              kind,
+              plan.planId,
+              missing,
+              plan.months,
+            );
+            const next = { ...plan, months: result.months };
+            setCache(next);
+            setPlan(next);
+            if (result.rateLimited) {
+              setRateLimited(true);
+              setError(RATE_LIMIT_CACHED);
+            }
+          } finally {
+            setFetchingMore(false);
+          }
+          return;
+        }
+      }
       await hydratePlan(token, summary, true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Refresh failed.");
+      if (plan) {
+        if (err instanceof ApiError && err.status === 429) {
+          setRateLimited(true);
+          setError(RATE_LIMIT_CACHED);
+          return;
+        }
+        setError(err instanceof Error ? err.message : "Refresh failed.");
+        return;
+      }
+      setError(noCacheError(err));
     } finally {
       setRefreshing(false);
     }
@@ -313,20 +370,38 @@ function Shell() {
               </select>
             </label>
           ) : (
-            <strong>{plan?.planName ?? plans[0]?.name ?? "<plans>"}</strong>
+            (plan?.planName ?? plans[0]?.name) && (
+              <strong>{plan?.planName ?? plans[0]?.name}</strong>
+            )
           )}
         </div>
         <nav className="top-nav">
           <a href="/privacy">Privacy</a>
+          <button
+            type="button"
+            className="text-btn"
+            onClick={() => void refresh()}
+            disabled={refreshing}
+          >
+            <RefreshIcon />
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </button>
           <button type="button" className="text-btn" onClick={resetAll}>
-            Reset all
+            <ResetIcon />
+            Log out
           </button>
         </nav>
       </header>
-      {error && <p className="banner err">{error}</p>}
+      {error && plan && <p className="banner err">{error}</p>}
       {loading && !plan && (
         <main className="connect">
           <p className="lede">Loading plan…</p>
+        </main>
+      )}
+      {error && !plan && !loading && (
+        <main className="connect">
+          <h1>Wait a few minutes</h1>
+          <p className="lede">{error}</p>
         </main>
       )}
       {plan && (
@@ -338,10 +413,10 @@ function Shell() {
           range={range}
           onRange={saveRange}
           fetchingMore={fetchingMore}
+          rangeReady={rangeReady}
+          rangeMessage={rangeMessage}
           overrides={overrides}
           onOverrides={saveOverrides}
-          onRefresh={() => void refresh()}
-          refreshing={refreshing}
         />
       )}
       {isPlaceholderClientId(config.ynabClientId) && (
@@ -351,5 +426,38 @@ function Shell() {
       )}
       <Attribution />
     </div>
+  );
+}
+
+function RefreshIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+    </svg>
+  );
+}
+
+function ResetIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      width="14"
+      height="14"
+      fill="currentColor"
+    >
+      <path d="M6.2 2h3.6l.45 1.1H13.5V4.5h-11V3.1h3.25L6.2 2ZM3.7 5.5h8.6l-.65 8.2H4.35L3.7 5.5Zm2.55 1.4v5.2h1.2V6.9H6.25Zm2.3 0v5.2h1.2V6.9H8.55Z" />
+    </svg>
   );
 }

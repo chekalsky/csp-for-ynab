@@ -8,7 +8,7 @@ import {
   visibleAmount,
 } from "./metrics";
 import { type ResolvedCategory } from "./mapping";
-import { inputToMonth, monthToInput, RANGE_PRESETS, spansYears } from "./range";
+import { inputToMonth, monthToInput, RANGE_PRESETS, rangeComplete, spansYears } from "./range";
 import { getExcludeInvestments, setExcludeInvestments } from "./storage";
 import { Tagging } from "./Tagging";
 import {
@@ -32,6 +32,14 @@ const COLORS: Record<ShownBucket, string> = {
   unmapped: "#6b3fa0",
 };
 
+const MIX_TILES: ShownBucket[] = [
+  "fixed",
+  "savings",
+  "investments",
+  "guilt_free",
+  "unmapped",
+];
+
 export function Dashboard(props: {
   plan: CachedPlan;
   categories: ResolvedCategory[];
@@ -40,10 +48,10 @@ export function Dashboard(props: {
   range: DateRange;
   onRange: (range: DateRange) => void;
   fetchingMore: boolean;
+  rangeReady: boolean;
+  rangeMessage: string | null;
   overrides: PlanOverrides;
   onOverrides: (next: PlanOverrides) => void;
-  onRefresh: () => void;
-  refreshing: boolean;
 }) {
   const {
     plan,
@@ -53,10 +61,10 @@ export function Dashboard(props: {
     range,
     onRange,
     fetchingMore,
+    rangeReady,
+    rangeMessage,
     overrides,
     onOverrides,
-    onRefresh,
-    refreshing,
   } = props;
   const [excludeInvestments, setExclude] = useState(getExcludeInvestments);
   const shownBuckets = excludeInvestments ? LIFESTYLE_SHOWN : SHOWN_BUCKETS;
@@ -73,21 +81,17 @@ export function Dashboard(props: {
     [months, chartCategories],
   );
   const ytd = rangeTotals(months, chartCategories);
-  const mixBuckets = shownBuckets.filter(
-    (bucket) => bucket !== "unmapped" || ytd.unmapped !== 0,
+  const mixBuckets = MIX_TILES.filter(
+    (bucket) =>
+      shownBuckets.includes(bucket) &&
+      (bucket !== "unmapped" || ytd.unmapped !== 0),
   );
   const total = bucketsTotal(ytd, mixBuckets);
   const unmapped = categories.filter((c) => c.bucket === "unmapped").length;
-  const presetLabel =
-    RANGE_PRESETS.find((p) => p.id === range.id)?.label ?? "";
-  const spanLabel =
+  const mixDates =
     months.length > 0
       ? monthSpanLabel(months[0].month, months[months.length - 1].month)
       : "";
-  const mixDates =
-    presetLabel && spanLabel
-      ? `${presetLabel}: ${spanLabel}`
-      : presetLabel || spanLabel;
   const [monthId, setMonthId] = useState(
     () => months[months.length - 1]?.month ?? "",
   );
@@ -124,16 +128,21 @@ export function Dashboard(props: {
       <div className="toolbar">
         <div className="range-block">
           <div className="chips" role="group" aria-label="Date range">
-            {RANGE_PRESETS.map(({ id, label }) => (
-              <button
-                key={id}
-                type="button"
-                className={range.id === id ? "chip on" : "chip"}
-                onClick={() => pickRange(id)}
-              >
-                {label}
-              </button>
-            ))}
+            {RANGE_PRESETS.map(({ id, label }) => {
+              const cached =
+                id === "custom" || rangeComplete(monthIds, plan.months, { id });
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={range.id === id ? "chip on" : "chip"}
+                  disabled={!cached && range.id !== id}
+                  onClick={() => pickRange(id)}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
           {range.id === "custom" && (
             <div className="custom-range">
@@ -182,24 +191,24 @@ export function Dashboard(props: {
             Exclude investments
           </label>
           {fetchingMore && <span className="muted">Loading months…</span>}
-          <button type="button" className="text-btn" onClick={onRefresh} disabled={refreshing}>
-            {refreshing ? "Refreshing…" : "Refresh"}
-          </button>
         </div>
       </div>
 
-      {unmapped > 0 && (
+      {rangeMessage && <p className="banner err">{rangeMessage}</p>}
+      {rangeReady && unmapped > 0 && (
         <a className="banner" href="#tagging">
           {unmapped} {unmapped === 1 ? "category needs" : "categories need"} a bucket
         </a>
       )}
 
-      {months.length === 0 && (
+      {rangeReady && months.length === 0 && (
         <p className="lede">No months in this range yet.</p>
       )}
 
+      {rangeReady && (
+        <>
       <section>
-        <h1>The mix</h1>
+        <h1>Your Conscious Spending</h1>
         {mixDates && <p className="mix-dates">{mixDates}</p>}
         <p className="lede">
           Every category except Ignore.
@@ -225,13 +234,11 @@ export function Dashboard(props: {
                   <i className={`swatch swatch-${bucket}`} aria-hidden />
                   <div>
                     <strong>{BUCKET_LABEL[bucket]}</strong>
+                    <div className="mix-amt">{money(ytd[bucket])}</div>
                     <div className="mix-meta">
+                      {formatPct(ytd[bucket], total)} ·{" "}
                       {mixMetric(bucket, chartCategories)}
                     </div>
-                  </div>
-                  <div className="mix-nums">
-                    <div className="mix-amt">{money(ytd[bucket])}</div>
-                    <div className="mix-meta">{formatPct(ytd[bucket], total)}</div>
                   </div>
                 </div>
               ))}
@@ -322,6 +329,8 @@ export function Dashboard(props: {
         overrides={overrides}
         onChange={onOverrides}
       />
+        </>
+      )}
     </div>
   );
 }

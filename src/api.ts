@@ -206,23 +206,34 @@ async function mapPool<T, R>(
   return out;
 }
 
+export type MonthFetch = {
+  months: CachedMonth[];
+  rateLimited: boolean;
+};
+
 export async function fetchMonthDetails(
   token: string,
   kind: ApiKind,
   planId: string,
   months: string[],
-): Promise<CachedMonth[]> {
+): Promise<MonthFetch> {
   const prefix = kind === "plans" ? "/plans" : "/budgets";
-  const rows = await mapPool(months, 5, async (month) => {
+  let rateLimited = false;
+  const rows = await mapPool(months, 2, async (month) => {
+    if (rateLimited) return null;
     try {
       const body = await apiGet(token, `${prefix}/${planId}/months/${month}`);
       const data = asRecord(asRecord(body)?.data);
       return parseMonth(data?.month);
-    } catch {
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) rateLimited = true;
       return null;
     }
   });
-  return rows.filter((m): m is CachedMonth => m !== null);
+  return {
+    months: rows.filter((m): m is CachedMonth => m !== null),
+    rateLimited,
+  };
 }
 
 export async function ensureMonths(
@@ -231,16 +242,19 @@ export async function ensureMonths(
   planId: string,
   monthIds: string[],
   existing: CachedMonth[],
-): Promise<CachedMonth[]> {
+): Promise<MonthFetch> {
   const have = new Set(
     existing.filter((m) => Object.keys(m.amounts).length > 0).map((m) => m.month),
   );
   const missing = monthIds.filter((id) => !have.has(id));
-  if (missing.length === 0) return existing;
+  if (missing.length === 0) return { months: existing, rateLimited: false };
   const fetched = await fetchMonthDetails(token, kind, planId, missing);
   const byId = new Map(existing.map((m) => [m.month, m]));
-  for (const row of fetched) byId.set(row.month, row);
-  return [...byId.values()].sort((a, b) => a.month.localeCompare(b.month));
+  for (const row of fetched.months) byId.set(row.month, row);
+  return {
+    months: [...byId.values()].sort((a, b) => a.month.localeCompare(b.month)),
+    rateLimited: fetched.rateLimited,
+  };
 }
 
 const EAGER_MONTHS = 12;
@@ -249,7 +263,7 @@ export async function loadPlan(
   token: string,
   kind: ApiKind,
   summary: PlanSummary,
-): Promise<CachedPlan> {
+): Promise<{ plan: CachedPlan; rateLimited: boolean }> {
   const prefix = kind === "plans" ? "/plans" : "/budgets";
   const [catBody, monthsBody, settingsBody] = await Promise.all([
     apiGet(token, `${prefix}/${summary.id}/categories`),
@@ -269,7 +283,7 @@ export async function loadPlan(
     .sort();
 
   const eager = monthIds.slice(-EAGER_MONTHS);
-  const months = await fetchMonthDetails(token, kind, summary.id, eager);
+  const fetched = await fetchMonthDetails(token, kind, summary.id, eager);
 
   const settings = asRecord(asRecord(asRecord(settingsBody)?.data)?.settings);
   const currency =
@@ -278,12 +292,15 @@ export async function loadPlan(
     FALLBACK_CURRENCY;
 
   return {
-    planId: summary.id,
-    planName: summary.name,
-    currency,
-    fetchedAt: Date.now(),
-    categories,
-    months,
-    monthIds,
+    plan: {
+      planId: summary.id,
+      planName: summary.name,
+      currency,
+      fetchedAt: Date.now(),
+      categories,
+      months: fetched.months,
+      monthIds,
+    },
+    rateLimited: fetched.rateLimited,
   };
 }

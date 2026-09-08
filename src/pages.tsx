@@ -206,8 +206,8 @@ export function PrivacyPage() {
       </p>
       <h2>How to wipe it</h2>
       <p>
-        Use <code>Reset all</code> to sign out and delete the token, cache, and
-        overrides on this device. You can also revoke the app in YNAB → Account
+        Use <code>Log out</code> to sign out and delete the token, cache, and
+        category overrides on this device. You can also revoke the app in YNAB → Account
         Settings → Authorized Applications. Questions:{" "}
         <a href="https://chekalsky.com">chekalsky.com</a>.
       </p>
