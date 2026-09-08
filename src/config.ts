@@ -9,10 +9,10 @@ const FALLBACK: AppConfig = {
   redirectUri: originRedirect(),
   markers: [
     { bucket: "ignore", patterns: ["[CSP-Ignore]"] },
-    { bucket: "fixed", patterns: ["[F]", "Fixed expenses"] },
-    { bucket: "guilt_free", patterns: ["[GF]", "Guilt-free"] },
-    { bucket: "investments", patterns: ["📈", "Investments"] },
-    { bucket: "savings", patterns: ["[S]", "Savings", "💰"] },
+    { bucket: "fixed", patterns: ["[CSP-Fixed]", "Fixed Expenses", "Fixed Costs"] },
+    { bucket: "guilt_free", patterns: ["[CSP-GuiltFree]", "Guilt-Free", "Wants"] },
+    { bucket: "investments", patterns: ["[CSP-Investments]", "Investments", "📈"] },
+    { bucket: "savings", patterns: ["[CSP-Savings]", "Savings", "💰", "Wishfarm"] },
   ],
 };
 

@@ -8,7 +8,7 @@ export type BucketId =
 
 export type ChartBucket = "fixed" | "investments" | "savings" | "guilt_free";
 
-export type ShownBucket = ChartBucket | "unmapped";
+export type ShownBucket = ChartBucket | "unmapped" | "ignore";
 
 export type Metric = "assigned" | "spent";
 

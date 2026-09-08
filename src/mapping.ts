@@ -109,5 +109,12 @@ export function isChartBucket(bucket: BucketId): bucket is ChartBucket {
 }
 
 export function isShownBucket(bucket: BucketId): bucket is ShownBucket {
-  return bucket !== "ignore";
+  return (
+    bucket === "fixed" ||
+    bucket === "investments" ||
+    bucket === "savings" ||
+    bucket === "guilt_free" ||
+    bucket === "unmapped" ||
+    bucket === "ignore"
+  );
 }

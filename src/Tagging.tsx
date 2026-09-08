@@ -4,10 +4,11 @@ import {
   DEFAULT_METRIC,
   type BucketId,
   type ChartBucket,
+  type Marker,
   type Metric,
   type PlanOverrides,
 } from "./types";
-import { isShownBucket, type ResolvedCategory } from "./mapping";
+import { type ResolvedCategory } from "./mapping";
 
 const BUCKET_OPTIONS: BucketId[] = [
   "unmapped",
@@ -22,8 +23,9 @@ export function Tagging(props: {
   categories: ResolvedCategory[];
   overrides: PlanOverrides;
   onChange: (next: PlanOverrides) => void;
+  markers: Marker[];
 }) {
-  const { categories, overrides, onChange } = props;
+  const { categories, overrides, onChange, markers } = props;
   const visible = categories.filter((c) => !c.deleted);
   const groups = new Map<string, { name: string; cats: ResolvedCategory[] }>();
   for (const cat of visible) {
@@ -76,10 +78,10 @@ export function Tagging(props: {
         <div>
           <h2>Map categories</h2>
           <p className="lede">
-            Set a whole YNAB group, then override a category if it does not
-            belong with the rest. Markers in <code>config.json</code> guess a
-            bucket. Overrides stay in this browser — nothing is written back to
-            YNAB.
+            To automatically assign a bucket, the app checks the category name, then the note, then the YNAB's
+            group. First match wins. Set a whole group, then override a
+            category if it doesn’t belong. Changes stay in this browser —
+            nothing is written back to YNAB.
           </p>
         </div>
         {unmapped > 0 && (
@@ -89,21 +91,64 @@ export function Tagging(props: {
         )}
       </header>
 
-      <div className="bulk-metrics">
-        {CHART_BUCKETS.map((bucket) => {
-          const metric = overrides.bucketMetrics[bucket] ?? DEFAULT_METRIC[bucket];
-          return (
-            <div key={bucket} className="bulk-row">
-              <span className={`swatch swatch-${bucket}`} />
-              <span>{BUCKET_LABEL[bucket]}</span>
-              <Segmented
-                value={metric}
-                onChange={(v) => bulkMetric(bucket, v)}
-              />
-            </div>
-          );
-        })}
+      <div className="map-setup">
+        <div>
+          <h3 className="match-heading">Automatic mapping</h3>
+          <table className="match-table">
+            <thead>
+              <tr>
+                <th>Contains</th>
+                <th>Bucket</th>
+              </tr>
+            </thead>
+            <tbody>
+              {markers.map((marker) => (
+                <tr key={marker.bucket + marker.patterns.join()}>
+                  <td>
+                    {marker.patterns.map((pattern, i) => (
+                      <span key={pattern}>
+                        {i > 0 ? ", " : null}
+                        <code>{pattern}</code>
+                      </span>
+                    ))}
+                  </td>
+                  <td>{BUCKET_LABEL[marker.bucket]}</td>
+                </tr>
+              ))}
+              <tr>
+                <td>Nothing above</td>
+                <td>{BUCKET_LABEL.unmapped}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3 className="match-heading">Assigned or Spent</h3>
+          <p className="lede">
+            Which YNAB amount to use for each bucket. Assigned usually makes
+            sense for Savings and Investments. You can override a category
+            below.
+          </p>
+          <div className="bulk-metrics">
+            {CHART_BUCKETS.map((bucket) => {
+              const metric =
+                overrides.bucketMetrics[bucket] ?? DEFAULT_METRIC[bucket];
+              return (
+                <div key={bucket} className="bulk-row">
+                  <span className={`swatch swatch-${bucket}`} />
+                  <span>{BUCKET_LABEL[bucket]}</span>
+                  <Segmented
+                    value={metric}
+                    onChange={(v) => bulkMetric(bucket, v)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
+
+      <h3 className="match-heading">Categories</h3>
 
       {[...groups.entries()].map(([groupId, group]) => {
         const groupValue = overrides.groups[groupId] ?? "auto";
@@ -117,7 +162,7 @@ export function Tagging(props: {
         return (
           <div key={groupId} className="group-block">
             <div className="group-head">
-              <h3>{group.name}</h3>
+              <h4>{group.name}</h4>
               <label className="group-bucket">
                 <span className="sr-only">Bucket for group {group.name}</span>
                 <select
@@ -183,7 +228,7 @@ export function Tagging(props: {
                       </select>
                     </td>
                     <td>
-                      {isShownBucket(cat.bucket) ? (
+                      {cat.bucket !== "ignore" ? (
                         <Segmented
                           value={cat.metric}
                           onChange={(v) => setMetric(cat.id, v)}

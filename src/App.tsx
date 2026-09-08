@@ -16,6 +16,7 @@ import {
   setDateRange,
   setPlanOverrides,
   setSelectedPlanId,
+  clearToken,
   wipeAll,
 } from "./storage";
 import type {
@@ -75,6 +76,7 @@ function Shell() {
   const [error, setError] = useState<string | null>(null);
   const [rateLimited, setRateLimited] = useState(false);
   const fromOauthRef = useRef(false);
+  const fillAttempt = useRef("");
 
   useEffect(() => {
     const captured = captureOauthHash();
@@ -105,7 +107,7 @@ function Shell() {
       setPlanId(next);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        wipeAll();
+        clearToken();
         setToken(null);
         setOauthError("Session expired. Connect again.");
         return;
@@ -218,6 +220,10 @@ function Shell() {
     };
   }, [token, plan?.planId, kind]);
 
+  useEffect(() => {
+    fillAttempt.current = "";
+  }, [plan?.planId]);
+
   const visibleMonths = useMemo(() => {
     if (!plan) return [];
     return filterMonths(plan.months, range, plan.monthIds);
@@ -227,11 +233,39 @@ function Shell() {
     plan && rangeComplete(plan.monthIds, plan.months, range),
   );
   const rangeMessage =
-    plan && !fetchingMore && !rangeReady && !error
-      ? rateLimited
-        ? "YNAB rate-limited this tab. This range isn’t fully cached. Wait a few minutes, then Refresh."
-        : "This range isn’t fully cached. Refresh to load it."
+    plan && !fetchingMore && !rangeReady && rateLimited && !error
+      ? "YNAB rate-limited this tab. This range isn’t fully cached. Wait a few minutes, then Refresh."
       : null;
+
+  useEffect(() => {
+    if (!token || !plan) return;
+    if (loading || fetchingMore || refreshing || rateLimited) return;
+    const missing = monthIdsInRange(plan.monthIds, range).filter(
+      (id) => !cachedMonthIds(plan.months).has(id),
+    );
+    if (missing.length === 0) return;
+    const key = `${plan.planId}:${missing.join(",")}`;
+    if (fillAttempt.current === key) return;
+    fillAttempt.current = key;
+    const id = plan.planId;
+    setFetchingMore(true);
+    void ensureMonths(token.accessToken, kind, id, missing, plan.months)
+      .then((result) => {
+        setPlan((prev) => {
+          if (!prev || prev.planId !== id) return prev;
+          const next = { ...prev, months: result.months };
+          setCache(next);
+          return next;
+        });
+        if (result.rateLimited) {
+          setRateLimited(true);
+          setError(RATE_LIMIT_CACHED);
+        } else {
+          setRateLimited(false);
+        }
+      })
+      .finally(() => setFetchingMore(false));
+  }, [token, kind, plan, range, loading, fetchingMore, refreshing, rateLimited]);
 
   function resetAll() {
     if (

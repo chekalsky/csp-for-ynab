@@ -16,6 +16,7 @@ const OAUTH_STATE = `${PREFIX}oauthState`;
 const EXCLUDE_INVEST = `${PREFIX}excludeInvestments`;
 const EXCLUDE_CURRENT = `${PREFIX}excludeCurrentMonth`;
 const IGNORE_HIDDEN = `${PREFIX}ignoreHidden`;
+const SHOW_IGNORED = `${PREFIX}showIgnored`;
 const RANGE = `${PREFIX}range`;
 
 const RANGE_IDS = new Set<DateRangeId>(RANGE_PRESETS.map((p) => p.id));
@@ -41,6 +42,11 @@ export function getToken(): TokenRecord | null {
 
 export function setToken(rec: TokenRecord): void {
   sessionStorage.setItem(TOKEN, JSON.stringify(rec));
+}
+
+export function clearToken(): void {
+  sessionStorage.removeItem(TOKEN);
+  sessionStorage.removeItem(OAUTH_STATE);
 }
 
 export function getSelectedPlanId(): string | null {
@@ -107,6 +113,14 @@ export function setIgnoreHidden(value: boolean): void {
   setFlag(IGNORE_HIDDEN, value);
 }
 
+export function getShowIgnored(): boolean {
+  return getFlag(SHOW_IGNORED, false);
+}
+
+export function setShowIgnored(value: boolean): void {
+  setFlag(SHOW_IGNORED, value);
+}
+
 function asDateRange(rec: DateRange | null): DateRange {
   if (!rec) return { id: "last_12" };
   const currentYear = new Date().getUTCFullYear();
@@ -168,6 +182,5 @@ export function wipeAll(): void {
     if (key?.startsWith(PREFIX)) keys.push(key);
   }
   for (const key of keys) localStorage.removeItem(key);
-  sessionStorage.removeItem(TOKEN);
-  sessionStorage.removeItem(OAUTH_STATE);
+  clearToken();
 }

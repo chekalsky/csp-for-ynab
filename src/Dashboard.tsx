@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { LineChart, PieChart, StackedBars } from "./charts";
 import { formatCompact, formatMoney, formatPct, monthFull, monthLabel, monthSpanLabel } from "./format";
 import {
@@ -13,9 +13,11 @@ import {
   getExcludeCurrentMonth,
   getExcludeInvestments,
   getIgnoreHidden,
+  getShowIgnored,
   setExcludeCurrentMonth,
   setExcludeInvestments,
   setIgnoreHidden,
+  setShowIgnored,
 } from "./storage";
 import { Tagging } from "./Tagging";
 import {
@@ -38,6 +40,7 @@ const COLORS: Record<ShownBucket, string> = {
   savings: "#4c733d",
   guilt_free: "#c24e1f",
   unmapped: "#6b3fa0",
+  ignore: "#6a7a72",
 };
 
 const MIX_TILES: ShownBucket[] = [
@@ -46,6 +49,7 @@ const MIX_TILES: ShownBucket[] = [
   "investments",
   "guilt_free",
   "unmapped",
+  "ignore",
 ];
 
 export function Dashboard(props: {
@@ -81,6 +85,7 @@ export function Dashboard(props: {
   const [excludeInvestments, setExclude] = useState(getExcludeInvestments);
   const [excludeCurrentMonth, setExcludeCurrent] = useState(getExcludeCurrentMonth);
   const [ignoreHidden, setIgnoreHiddenState] = useState(getIgnoreHidden);
+  const [showIgnored, setShowIgnoredState] = useState(getShowIgnored);
   const categories = useMemo(
     () =>
       plan.categories.map((c) =>
@@ -91,9 +96,12 @@ export function Dashboard(props: {
   const months = excludeCurrentMonth
     ? rangeMonths.filter((m) => m.month !== utcMonthStart())
     : rangeMonths;
-  const shownBuckets = excludeInvestments ? LIFESTYLE_SHOWN : SHOWN_BUCKETS;
+  const shownBuckets = [
+    ...(excludeInvestments ? LIFESTYLE_SHOWN : SHOWN_BUCKETS),
+    ...(showIgnored ? (["ignore"] as const) : []),
+  ];
   const chartCategories = categories.filter((c) => {
-    if (c.bucket === "ignore") return false;
+    if (c.bucket === "ignore" && !showIgnored) return false;
     if (excludeInvestments && c.bucket === "investments") return false;
     return true;
   });
@@ -108,7 +116,8 @@ export function Dashboard(props: {
   const mixBuckets = MIX_TILES.filter(
     (bucket) =>
       shownBuckets.includes(bucket) &&
-      (bucket !== "unmapped" || ytd.unmapped !== 0),
+      (bucket !== "unmapped" || ytd.unmapped !== 0) &&
+      (bucket !== "ignore" || ytd.ignore !== 0),
   );
   const total = bucketsTotal(ytd, mixBuckets);
   const unmapped = categories.filter((c) => c.bucket === "unmapped").length;
@@ -116,9 +125,27 @@ export function Dashboard(props: {
     months.length > 0
       ? monthSpanLabel(months[0].month, months[months.length - 1].month)
       : "";
+  const tagAnchor = useRef<{ el: HTMLElement; top: number } | null>(null);
   const [monthId, setMonthId] = useState(
     () => months[months.length - 1]?.month ?? "",
   );
+
+  function saveOverrides(next: PlanOverrides) {
+    const el = document.activeElement;
+    if (el instanceof HTMLElement && el.closest("#tagging")) {
+      tagAnchor.current = { el, top: el.getBoundingClientRect().top };
+    }
+    onOverrides(next);
+  }
+
+  useLayoutEffect(() => {
+    const lock = tagAnchor.current;
+    if (!lock) return;
+    tagAnchor.current = null;
+    if (!lock.el.isConnected) return;
+    const delta = lock.el.getBoundingClientRect().top - lock.top;
+    if (Math.abs(delta) >= 1) window.scrollBy(0, delta);
+  }, [overrides]);
   useEffect(() => {
     if (!months.some((m) => m.month === monthId)) {
       setMonthId(months[months.length - 1]?.month ?? "");
@@ -145,6 +172,11 @@ export function Dashboard(props: {
   function toggleIgnoreHidden(checked: boolean) {
     setIgnoreHiddenState(checked);
     setIgnoreHidden(checked);
+  }
+
+  function toggleShowIgnored(checked: boolean) {
+    setShowIgnoredState(checked);
+    setShowIgnored(checked);
   }
 
   function pickRange(id: DateRangeId) {
@@ -279,6 +311,14 @@ export function Dashboard(props: {
             />
             Hide investments
           </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={showIgnored}
+              onChange={(e) => toggleShowIgnored(e.target.checked)}
+            />
+            Show ignored
+          </label>
           {fetchingMore && <span className="muted">Loading months…</span>}
         </div>
         {(error || rangeMessage || (rangeReady && unmapped > 0)) && (
@@ -393,6 +433,16 @@ export function Dashboard(props: {
                   },
                 ]
               : []),
+            ...(showIgnored && ytd.ignore !== 0
+              ? [
+                  {
+                    id: "ignore" as const,
+                    name: BUCKET_LABEL.ignore,
+                    color: COLORS.ignore,
+                    data: series.map((row) => row.buckets.ignore),
+                  },
+                ]
+              : []),
           ]}
           formatValue={(n) => money(n)}
           formatTick={(n) => formatCompact(n, plan.currency)}
@@ -414,7 +464,8 @@ export function Dashboard(props: {
       <Tagging
         categories={categories}
         overrides={overrides}
-        onChange={onOverrides}
+        onChange={saveOverrides}
+        markers={markers}
       />
         </>
       )}
@@ -426,7 +477,7 @@ function mixMetric(
   bucket: ShownBucket,
   categories: ResolvedCategory[],
 ): string {
-  if (bucket === "unmapped") return "Assigned or Spent";
+  if (bucket === "unmapped" || bucket === "ignore") return "Assigned or Spent";
   const used = new Set(
     categories.filter((c) => c.bucket === bucket).map((c) => c.metric),
   );
@@ -552,7 +603,7 @@ function MonthDrill(props: {
                       <td>{c.groupName}</td>
                       <td className={c.hidden ? "is-hidden" : undefined}>{c.name}</td>
                       <td className="metric">
-                        {c.bucket === "unmapped"
+                        {c.bucket === "unmapped" || c.bucket === "ignore"
                           ? "Assigned or Spent"
                           : c.metric === "assigned"
                             ? "Assigned"

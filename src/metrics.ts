@@ -16,7 +16,7 @@ export function visibleAmount(
   activity: number,
   metric: Metric,
 ): number {
-  if (bucket === "unmapped") {
+  if (bucket === "unmapped" || bucket === "ignore") {
     return Math.max(budgeted, -activity, 0);
   }
   return amountFor(budgeted, activity, metric);
@@ -25,7 +25,14 @@ export function visibleAmount(
 export type BucketTotals = Record<ShownBucket, number>;
 
 export function emptyTotals(): BucketTotals {
-  return { fixed: 0, investments: 0, savings: 0, guilt_free: 0, unmapped: 0 };
+  return {
+    fixed: 0,
+    investments: 0,
+    savings: 0,
+    guilt_free: 0,
+    unmapped: 0,
+    ignore: 0,
+  };
 }
 
 export function bucketsTotal(t: BucketTotals, keys: ShownBucket[]): number {

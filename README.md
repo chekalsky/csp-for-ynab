@@ -55,10 +55,10 @@ Local deploy: `npm run deploy` (uses `public/config.json` on disk).
 | Bucket | Matches |
 | --- | --- |
 | Ignore | `[CSP-Ignore]` |
-| Fixed Costs | Mark with `[F]` or name your category Fixed expenses or Fixed Costs |
-| Guilt-free spending | `[GF]` or Guilt-free, Wants |
-| Investments | 📈 or Investments |
-| Savings | `[S]`, 💰 or Savings |
+| Fixed Costs | `[CSP-Fixed]`, Fixed Expenses, Fixed Costs |
+| Guilt-free spending | `[CSP-GuiltFree]`, Guilt-Free, Wants |
+| Investments | `[CSP-Investments]`, Investments, 📈 |
+| Savings | `[CSP-Savings]`, Savings, 💰, Wishfarm |
 
 Hidden and internal categories default to Ignore. Unmatched categories show as **Needs a bucket**. Any changes are saved in your browser only. This app does not write tags back to YNAB.
 
