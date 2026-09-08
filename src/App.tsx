@@ -4,15 +4,17 @@ import { isPlaceholderClientId, loadConfig } from "./config";
 import { Dashboard } from "./Dashboard";
 import { resolveCategory } from "./mapping";
 import { buildAuthorizeUrl, captureOauthHash, tokenIsFresh } from "./oauth";
-import { BootError, ConnectPage, PrivacyPage, Attribution, CspName } from "./pages";
+import { BootError, ConnectPage, PrivacyPage, Attribution } from "./pages";
 import { filterMonths, monthIdsInRange, utcMonthStart } from "./range";
 import {
   emptyOverrides,
   getCache,
+  getDateRange,
   getPlanOverrides,
   getSelectedPlanId,
   getToken,
   setCache,
+  setDateRange,
   setPlanOverrides,
   setSelectedPlanId,
   wipeAll,
@@ -56,7 +58,7 @@ function Shell() {
   const [planId, setPlanId] = useState<string | null>(null);
   const [plan, setPlan] = useState<CachedPlan | null>(null);
   const [overrides, setOverrides] = useState<PlanOverrides>(emptyOverrides());
-  const [range, setRange] = useState<DateRange>({ id: "last_12" });
+  const [range, setRange] = useState<DateRange>(getDateRange);
   const [loading, setLoading] = useState(false);
   const [fetchingMore, setFetchingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -238,12 +240,18 @@ function Shell() {
     setPlans([]);
     setPlanId(null);
     setOverrides(emptyOverrides());
+    setRange({ id: "last_12" });
   }
 
   function saveOverrides(next: PlanOverrides) {
     if (!planId) return;
     setOverrides(next);
     setPlanOverrides(planId, next);
+  }
+
+  function saveRange(next: DateRange) {
+    setRange(next);
+    setDateRange(next);
   }
 
   async function refresh() {
@@ -328,7 +336,7 @@ function Shell() {
           months={visibleMonths}
           monthIds={plan.monthIds}
           range={range}
-          onRange={setRange}
+          onRange={saveRange}
           fetchingMore={fetchingMore}
           overrides={overrides}
           onOverrides={saveOverrides}

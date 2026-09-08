@@ -198,8 +198,9 @@ export function PrivacyPage() {
       <p>
         The access token stays in <code>sessionStorage</code> in this browser
         tab until it expires (about two hours) or you close the tab. A cache of
-        plan names, categories, and monthly totals, plus your bucket overrides,
-        stays in <code>localStorage</code> on this device until you wipe it. None
+        plan names, categories, and monthly totals, plus your bucket overrides
+        and last date range, stays in <code>localStorage</code> on this device
+        until you wipe it. None
         of that is encrypted beyond what the browser already does. We do not
         pass YNAB data to any other third party.
       </p>

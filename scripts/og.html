@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        background: #d9e3dc;
+        color: #132019;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+          sans-serif;
+      }
+      main {
+        height: 630px;
+        padding: 64px 72px 56px;
+        display: flex;
+        flex-direction: column;
+      }
+      .eyebrow {
+        font-size: 22px;
+        letter-spacing: 0.04em;
+        color: #5a6c63;
+        margin-bottom: 18px;
+      }
+      h1 {
+        font-family: "Iowan Old Style", Palatino, Georgia, serif;
+        font-weight: 600;
+        font-size: 72px;
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+        max-width: 18ch;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: auto 0 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 48px;
+        border-top: 1px solid #b4c3b9;
+      }
+      li {
+        display: grid;
+        grid-template-columns: 10px 1fr;
+        gap: 18px;
+        padding: 22px 0;
+        border-bottom: 1px solid #b4c3b9;
+      }
+      i {
+        display: block;
+        background: var(--c);
+      }
+      strong {
+        display: block;
+        font-family: "Iowan Old Style", Palatino, Georgia, serif;
+        font-size: 28px;
+        font-weight: 600;
+      }
+      li span {
+        display: block;
+        color: #5a6c63;
+        font-size: 20px;
+        margin-top: 2px;
+      }
+      footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-top: 28px;
+        color: #5a6c63;
+        font-size: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Conscious Spending Plan for YNAB</p>
+      <h1>See your plan as four buckets.</h1>
+      <ul>
+        <li>
+          <i style="--c: #2a4a5f"></i>
+          <div>
+            <strong>Fixed costs</strong>
+            <span>The non-negotiables.</span>
+          </div>
+        </li>
+        <li>
+          <i style="--c: #1a6758"></i>
+          <div>
+            <strong>Investments</strong>
+            <span>Money meant to grow.</span>
+          </div>
+        </li>
+        <li>
+          <i style="--c: #4c733d"></i>
+          <div>
+            <strong>Savings</strong>
+            <span>Named goals and sinking funds.</span>
+          </div>
+        </li>
+        <li>
+          <i style="--c: #c24e1f"></i>
+          <div>
+            <strong>Guilt-free spending</strong>
+            <span>The fun you already decided to have.</span>
+          </div>
+        </li>
+      </ul>
+      <footer>
+        <span>Your numbers stay in your browser.</span>
+        <span>csp-for-ynab.chekalsky.com</span>
+      </footer>
+    </main>
+  </body>
+</html>

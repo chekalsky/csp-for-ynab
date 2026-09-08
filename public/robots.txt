@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://csp-for-ynab.chekalsky.com/sitemap.xml

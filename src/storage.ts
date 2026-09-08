@@ -1,8 +1,11 @@
 import type {
   CachedPlan,
+  DateRange,
+  DateRangeId,
   PlanOverrides,
   TokenRecord,
 } from "./types";
+import { RANGE_PRESETS } from "./range";
 
 const PREFIX = "csp-for-ynab.";
 const TOKEN = `${PREFIX}token`;
@@ -11,6 +14,9 @@ const OVERRIDES_PREFIX = `${PREFIX}overrides.`;
 const CACHE_PREFIX = `${PREFIX}cache.`;
 const OAUTH_STATE = `${PREFIX}oauthState`;
 const EXCLUDE_INVEST = `${PREFIX}excludeInvestments`;
+const RANGE = `${PREFIX}range`;
+
+const RANGE_IDS = new Set<DateRangeId>(RANGE_PRESETS.map((p) => p.id));
 
 function readJson<T>(store: Storage, key: string): T | null {
   try {
@@ -71,6 +77,24 @@ export function getExcludeInvestments(): boolean {
 
 export function setExcludeInvestments(value: boolean): void {
   localStorage.setItem(EXCLUDE_INVEST, value ? "1" : "0");
+}
+
+function asDateRange(rec: DateRange | null): DateRange {
+  if (!rec || !RANGE_IDS.has(rec.id)) return { id: "last_12" };
+  if (rec.id !== "custom") return { id: rec.id };
+  return {
+    id: "custom",
+    from: typeof rec.from === "string" ? rec.from : undefined,
+    to: typeof rec.to === "string" ? rec.to : undefined,
+  };
+}
+
+export function getDateRange(): DateRange {
+  return asDateRange(readJson<DateRange>(localStorage, RANGE));
+}
+
+export function setDateRange(range: DateRange): void {
+  localStorage.setItem(RANGE, JSON.stringify(asDateRange(range)));
 }
 
 export function getCache(planId: string): CachedPlan | null {

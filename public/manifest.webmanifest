@@ -1,0 +1,22 @@
+{
+  "name": "Conscious Spending Plan for YNAB",
+  "short_name": "CSP for YNAB",
+  "description": "See your YNAB plan as Ramit Sethi’s four Conscious Spending buckets. Your data stays in the browser.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#d9e3dc",
+  "theme_color": "#d9e3dc",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
