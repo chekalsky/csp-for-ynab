@@ -29,9 +29,14 @@ function firstMarkerHit(texts: string[], markers: Marker[]): Marker["bucket"] | 
   return null;
 }
 
-export function markerBucket(cat: CachedCategory, markers: Marker[]): BucketId {
+function markerBucket(
+  cat: CachedCategory,
+  markers: Marker[],
+  ignoreHidden: boolean,
+): BucketId {
   if (cat.deleted) return "ignore";
-  if (cat.hidden || cat.internal) return "ignore";
+  if (cat.internal) return "ignore";
+  if (ignoreHidden && cat.hidden) return "ignore";
   if (INTERNAL_GROUPS.has(cat.groupName)) return "ignore";
   if (cat.name === "Inflow: Ready to Assign") return "ignore";
 
@@ -54,10 +59,11 @@ export function resolveCategory(
   cat: CachedCategory,
   markers: Marker[],
   overrides: PlanOverrides,
+  ignoreHidden = true,
 ): ResolvedCategory {
-  const inferred = markerBucket(cat, markers);
-  const groupOverride =
-    cat.hidden || cat.internal ? undefined : overrides.groups[cat.groupId];
+  const inferred = markerBucket(cat, markers, ignoreHidden);
+  const locked = cat.internal || (ignoreHidden && cat.hidden);
+  const groupOverride = locked ? undefined : overrides.groups[cat.groupId];
   const inherited = groupOverride ?? inferred;
   const catOverride = overrides.buckets[cat.id];
   const bucket = catOverride ?? inherited;

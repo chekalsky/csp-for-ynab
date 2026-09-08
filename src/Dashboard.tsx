@@ -7,9 +7,16 @@ import {
   rangeTotals,
   visibleAmount,
 } from "./metrics";
-import { type ResolvedCategory } from "./mapping";
-import { inputToMonth, monthToInput, RANGE_PRESETS, rangeComplete, spansYears } from "./range";
-import { getExcludeInvestments, setExcludeInvestments } from "./storage";
+import { resolveCategory, type ResolvedCategory } from "./mapping";
+import { inputToMonth, monthToInput, pastYears, RANGE_PRESETS, rangeComplete, spansYears, utcMonthStart } from "./range";
+import {
+  getExcludeCurrentMonth,
+  getExcludeInvestments,
+  getIgnoreHidden,
+  setExcludeCurrentMonth,
+  setExcludeInvestments,
+  setIgnoreHidden,
+} from "./storage";
 import { Tagging } from "./Tagging";
 import {
   BUCKET_LABEL,
@@ -20,6 +27,7 @@ import {
   type CachedPlan,
   type DateRange,
   type DateRangeId,
+  type Marker,
   type PlanOverrides,
   type ShownBucket,
 } from "./types";
@@ -42,7 +50,7 @@ const MIX_TILES: ShownBucket[] = [
 
 export function Dashboard(props: {
   plan: CachedPlan;
-  categories: ResolvedCategory[];
+  markers: Marker[];
   months: CachedMonth[];
   monthIds: string[];
   range: DateRange;
@@ -57,8 +65,8 @@ export function Dashboard(props: {
 }) {
   const {
     plan,
-    categories,
-    months,
+    markers,
+    months: rangeMonths,
     monthIds,
     range,
     onRange,
@@ -71,6 +79,18 @@ export function Dashboard(props: {
     onOverrides,
   } = props;
   const [excludeInvestments, setExclude] = useState(getExcludeInvestments);
+  const [excludeCurrentMonth, setExcludeCurrent] = useState(getExcludeCurrentMonth);
+  const [ignoreHidden, setIgnoreHiddenState] = useState(getIgnoreHidden);
+  const categories = useMemo(
+    () =>
+      plan.categories.map((c) =>
+        resolveCategory(c, markers, overrides, ignoreHidden),
+      ),
+    [plan.categories, markers, overrides, ignoreHidden],
+  );
+  const months = excludeCurrentMonth
+    ? rangeMonths.filter((m) => m.month !== utcMonthStart())
+    : rangeMonths;
   const shownBuckets = excludeInvestments ? LIFESTYLE_SHOWN : SHOWN_BUCKETS;
   const chartCategories = categories.filter((c) => {
     if (c.bucket === "ignore") return false;
@@ -117,6 +137,16 @@ export function Dashboard(props: {
     setExcludeInvestments(checked);
   }
 
+  function toggleCurrentMonth(checked: boolean) {
+    setExcludeCurrent(checked);
+    setExcludeCurrentMonth(checked);
+  }
+
+  function toggleIgnoreHidden(checked: boolean) {
+    setIgnoreHiddenState(checked);
+    setIgnoreHidden(checked);
+  }
+
   function pickRange(id: DateRangeId) {
     if (id === "custom") {
       const to = monthIds[monthIds.length - 1];
@@ -133,6 +163,45 @@ export function Dashboard(props: {
         <div className="range-block">
           <div className="chips" role="group" aria-label="Date range">
             {RANGE_PRESETS.map(({ id, label }) => {
+              if (id === "year") {
+                const years = pastYears(monthIds);
+                if (years.length === 0) return null;
+                const selected =
+                  range.id === "year" && years.includes(range.year ?? 0);
+                return (
+                  <select
+                    key={id}
+                    className={selected ? "chip-select on" : "chip-select"}
+                    aria-label="Year"
+                    value={selected ? String(range.year) : ""}
+                    onChange={(e) => {
+                      const y = Number(e.target.value);
+                      if (!y) return;
+                      onRange({ id: "year", year: y });
+                    }}
+                  >
+                    <option value="" disabled>
+                      Year
+                    </option>
+                    {years.map((y) => {
+                      const cached = rangeComplete(monthIds, plan.months, {
+                        id: "year",
+                        year: y,
+                      });
+                      const isOn = range.id === "year" && range.year === y;
+                      return (
+                        <option
+                          key={y}
+                          value={y}
+                          disabled={!cached && !isOn && rateLimited}
+                        >
+                          {y}
+                        </option>
+                      );
+                    })}
+                  </select>
+                );
+              }
               const cached =
                 id === "custom" || rangeComplete(monthIds, plan.months, { id });
               return (
@@ -189,10 +258,26 @@ export function Dashboard(props: {
           <label className="check">
             <input
               type="checkbox"
+              checked={excludeCurrentMonth}
+              onChange={(e) => toggleCurrentMonth(e.target.checked)}
+            />
+            Exclude current month
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={ignoreHidden}
+              onChange={(e) => toggleIgnoreHidden(e.target.checked)}
+            />
+            Ignore hidden
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
               checked={excludeInvestments}
               onChange={(e) => toggleInvestments(e.target.checked)}
             />
-            Exclude investments
+            Hide investments
           </label>
           {fetchingMore && <span className="muted">Loading months…</span>}
         </div>
@@ -465,7 +550,7 @@ function MonthDrill(props: {
                   {r.cats.map((c) => (
                     <tr key={c.id}>
                       <td>{c.groupName}</td>
-                      <td>{c.name}</td>
+                      <td className={c.hidden ? "is-hidden" : undefined}>{c.name}</td>
                       <td className="metric">
                         {c.bucket === "unmapped"
                           ? "Assigned or Spent"

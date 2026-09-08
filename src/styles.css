@@ -571,6 +571,20 @@ select {
   max-width: 100%;
 }
 
+.chips .chip-select {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0.4rem 0.5rem 0.4rem 0.7rem;
+  max-width: 7rem;
+  color: inherit;
+}
+
+.chips .chip-select.on {
+  background: var(--ink);
+  color: var(--sheet);
+}
+
 .banner {
   display: block;
   background: var(--warn-bg);
@@ -652,8 +666,17 @@ select {
 
 .cat-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.92rem;
+}
+
+.cat-table .col-bucket {
+  width: 18rem;
+}
+
+.cat-table .col-metric {
+  width: 11.5rem;
 }
 
 .cat-table th,
@@ -662,6 +685,24 @@ select {
   padding: 0.4rem 0.45rem;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
+}
+
+.cat-table td:first-child {
+  overflow-wrap: anywhere;
+}
+
+.cat-table select,
+.cat-table .seg {
+  width: 100%;
+  max-width: 100%;
+}
+
+.cat-table .seg {
+  display: flex;
+}
+
+.cat-table .seg button {
+  flex: 1;
 }
 
 .cat-table .num {
@@ -720,10 +761,19 @@ select {
   font-weight: 600;
 }
 
+.is-hidden {
+  opacity: 0.45;
+}
+
 .muted {
   color: var(--muted);
   font-size: 0.8rem;
   margin-left: 0.4rem;
+}
+
+.cat-table .muted {
+  display: block;
+  margin-left: 0;
 }
 
 .chart-wrap {
@@ -897,6 +947,7 @@ input:focus-visible {
   }
 
   .chip,
+  .chips .chip-select,
   .seg button {
     padding: 0.5rem 0.65rem;
   }

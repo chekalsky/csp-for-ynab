@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, ensureMonths, fetchMonthDetails, listPlans, loadPlan, pickInitialPlanId, type ApiKind } from "./api";
 import { isPlaceholderClientId, loadConfig } from "./config";
 import { Dashboard } from "./Dashboard";
-import { resolveCategory } from "./mapping";
 import { buildAuthorizeUrl, captureOauthHash, tokenIsFresh } from "./oauth";
 import { BootError, ConnectPage, PrivacyPage, Attribution } from "./pages";
 import { cachedMonthIds, filterMonths, monthIdsInRange, rangeComplete, utcMonthStart } from "./range";
@@ -219,11 +218,6 @@ function Shell() {
     };
   }, [token, plan?.planId, kind]);
 
-  const categories = useMemo(() => {
-    if (!plan || !config) return [];
-    return plan.categories.map((c) => resolveCategory(c, config.markers, overrides));
-  }, [plan, config, overrides]);
-
   const visibleMonths = useMemo(() => {
     if (!plan) return [];
     return filterMonths(plan.months, range, plan.monthIds);
@@ -408,7 +402,7 @@ function Shell() {
       {plan && (
         <Dashboard
           plan={plan}
-          categories={categories}
+          markers={config.markers}
           months={visibleMonths}
           monthIds={plan.monthIds}
           range={range}

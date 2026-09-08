@@ -459,11 +459,18 @@ export function LineChart(props: {
   const innerW = width - pad.l - pad.r;
   const innerH = height - pad.t - pad.b;
   const n = Math.max(1, labels.length - 1);
+  const gap = innerW / Math.max(1, labels.length);
+  const tickEvery = Math.max(1, Math.ceil(56 / gap));
   const max = niceMax(
     Math.max(0, ...series.flatMap((s) => s.data.map((v) => v / 1000))),
   );
   const x = (i: number) => pad.l + (labels.length <= 1 ? innerW / 2 : (innerW * i) / n);
   const y = (milli: number) => pad.t + innerH - (milli / 1000 / max) * innerH;
+  const showTick = (i: number) =>
+    tickEvery === 1 ||
+    i === 0 ||
+    i === labels.length - 1 ||
+    (i % tickEvery === 0 && i + tickEvery < labels.length);
 
   return (
     <div className="chart-wrap">
@@ -529,9 +536,11 @@ export function LineChart(props: {
                 });
               }}
             />
-            <text x={x(i)} y={height - 10} className="chart-tick" textAnchor="middle">
-              {label}
-            </text>
+            {showTick(i) && (
+              <text x={x(i)} y={height - 10} className="chart-tick" textAnchor="middle">
+                {label}
+              </text>
+            )}
           </g>
         ))}
         {hover !== null && (

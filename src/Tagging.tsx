@@ -134,6 +134,11 @@ export function Tagging(props: {
               </label>
             </div>
             <table className="cat-table">
+              <colgroup>
+                <col />
+                <col className="col-bucket" />
+                <col className="col-metric" />
+              </colgroup>
               <thead>
                 <tr>
                   <th>Category</th>
@@ -145,10 +150,21 @@ export function Tagging(props: {
                 {group.cats.map((cat) => (
                   <tr key={cat.id} className={cat.bucket === "unmapped" ? "needs" : ""}>
                     <td>
-                      <div className="cat-name">{cat.name}</div>
-                      {cat.hidden && <span className="muted">Hidden</span>}
-                      {cat.source === "override" && <span className="muted">Override</span>}
-                      {cat.source === "group" && <span className="muted">Group</span>}
+                      <div className={cat.hidden ? "cat-name is-hidden" : "cat-name"}>
+                        {cat.name}
+                      </div>
+                      <span className="muted">
+                        {[
+                          cat.hidden ? "Hidden" : null,
+                          cat.source === "override"
+                            ? "Override"
+                            : cat.source === "group"
+                              ? "Group"
+                              : "Automatic",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
                     </td>
                     <td>
                       <select

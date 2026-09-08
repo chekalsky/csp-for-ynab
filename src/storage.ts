@@ -14,6 +14,8 @@ const OVERRIDES_PREFIX = `${PREFIX}overrides.`;
 const CACHE_PREFIX = `${PREFIX}cache.`;
 const OAUTH_STATE = `${PREFIX}oauthState`;
 const EXCLUDE_INVEST = `${PREFIX}excludeInvestments`;
+const EXCLUDE_CURRENT = `${PREFIX}excludeCurrentMonth`;
+const IGNORE_HIDDEN = `${PREFIX}ignoreHidden`;
 const RANGE = `${PREFIX}range`;
 
 const RANGE_IDS = new Set<DateRangeId>(RANGE_PRESETS.map((p) => p.id));
@@ -71,16 +73,53 @@ export function setPlanOverrides(planId: string, overrides: PlanOverrides): void
   localStorage.setItem(OVERRIDES_PREFIX + planId, JSON.stringify(overrides));
 }
 
+function getFlag(key: string, fallback: boolean): boolean {
+  const v = localStorage.getItem(key);
+  if (v === null) return fallback;
+  return v === "1";
+}
+
+function setFlag(key: string, value: boolean): void {
+  localStorage.setItem(key, value ? "1" : "0");
+}
+
 export function getExcludeInvestments(): boolean {
-  return localStorage.getItem(EXCLUDE_INVEST) === "1";
+  return getFlag(EXCLUDE_INVEST, false);
 }
 
 export function setExcludeInvestments(value: boolean): void {
-  localStorage.setItem(EXCLUDE_INVEST, value ? "1" : "0");
+  setFlag(EXCLUDE_INVEST, value);
+}
+
+export function getExcludeCurrentMonth(): boolean {
+  return getFlag(EXCLUDE_CURRENT, false);
+}
+
+export function setExcludeCurrentMonth(value: boolean): void {
+  setFlag(EXCLUDE_CURRENT, value);
+}
+
+export function getIgnoreHidden(): boolean {
+  return getFlag(IGNORE_HIDDEN, true);
+}
+
+export function setIgnoreHidden(value: boolean): void {
+  setFlag(IGNORE_HIDDEN, value);
 }
 
 function asDateRange(rec: DateRange | null): DateRange {
-  if (!rec || !RANGE_IDS.has(rec.id)) return { id: "last_12" };
+  if (!rec) return { id: "last_12" };
+  const currentYear = new Date().getUTCFullYear();
+  const id = (rec as { id?: string }).id;
+  if (id === "last_year") {
+    return { id: "year", year: currentYear - 1 };
+  }
+  if (!RANGE_IDS.has(rec.id)) return { id: "last_12" };
+  if (rec.id === "year") {
+    const year = typeof rec.year === "number" ? rec.year : Number(rec.year);
+    if (!Number.isInteger(year) || year < 1970) return { id: "last_12" };
+    return { id: "year", year: year >= currentYear ? currentYear - 1 : year };
+  }
   if (rec.id !== "custom") return { id: rec.id };
   return {
     id: "custom",

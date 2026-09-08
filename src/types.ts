@@ -85,7 +85,7 @@ export type PlanOverrides = {
 
 export type DateRangeId =
   | "this_year"
-  | "last_year"
+  | "year"
   | "last_3"
   | "last_6"
   | "last_12"
@@ -97,6 +97,7 @@ export type DateRange = {
   id: DateRangeId;
   from?: string;
   to?: string;
+  year?: number;
 };
 
 export const CHART_BUCKETS: ChartBucket[] = [

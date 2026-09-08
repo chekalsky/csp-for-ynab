@@ -41,8 +41,8 @@ export function rangeBounds(
       const start = `${now.getUTCFullYear()}-01-01`;
       return { start, end: endCap };
     }
-    case "last_year": {
-      const y = now.getUTCFullYear() - 1;
+    case "year": {
+      const y = range.year ?? now.getUTCFullYear() - 1;
       return { start: `${y}-01-01`, end: `${y}-12-01` };
     }
     case "last_3":
@@ -109,9 +109,19 @@ export function spansYears(months: CachedMonth[]): boolean {
   return years.size > 1;
 }
 
+export function pastYears(monthIds: string[], now = new Date()): number[] {
+  const current = now.getUTCFullYear();
+  const years = new Set<number>();
+  for (const id of monthIds) {
+    const y = Number(id.slice(0, 4));
+    if (y > 0 && y < current) years.add(y);
+  }
+  return [...years].sort((a, b) => b - a);
+}
+
 export const RANGE_PRESETS: Array<{ id: DateRange["id"]; label: string }> = [
   { id: "this_year", label: "This year" },
-  { id: "last_year", label: "Last year" },
+  { id: "year", label: "Year" },
   { id: "last_3", label: "3 months" },
   { id: "last_6", label: "6 months" },
   { id: "last_12", label: "12 months" },
