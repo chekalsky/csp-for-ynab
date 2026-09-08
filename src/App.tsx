@@ -3,7 +3,7 @@ import { ApiError, ensureMonths, fetchMonthDetails, listPlans, loadPlan, pickIni
 import { isPlaceholderClientId, loadConfig } from "./config";
 import { Dashboard } from "./Dashboard";
 import { buildAuthorizeUrl, captureOauthHash, tokenIsFresh } from "./oauth";
-import { BootError, ConnectPage, PrivacyPage, Attribution } from "./pages";
+import { BootError, ConnectPage, PrivacyPage, Attribution, Loader } from "./pages";
 import { cachedMonthIds, filterMonths, monthIdsInRange, rangeComplete, utcMonthStart } from "./range";
 import {
   emptyOverrides,
@@ -359,8 +359,8 @@ function Shell() {
   if (bootError) return <BootError message={bootError} />;
   if (!config) {
     return (
-      <main className="connect">
-        <p className="lede">Loading…</p>
+      <main className="connect loader-page">
+        <Loader label="Loading…" />
       </main>
     );
   }
@@ -423,9 +423,7 @@ function Shell() {
         </nav>
       </header>
       {loading && !plan && (
-        <main className="connect">
-          <p className="lede">Loading plan…</p>
-        </main>
+        <Loader fill label="Loading plan…" />
       )}
       {error && !plan && !loading && (
         <main className="connect">

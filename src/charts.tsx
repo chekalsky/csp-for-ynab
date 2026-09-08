@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import type { CSSProperties } from "react";
 
 export type Series = {
   id: string;
@@ -8,7 +7,8 @@ export type Series = {
   data: number[];
 };
 
-type Tooltip = { x: number; y: number; label: string; lines: string[] };
+type TipLine = { color: string; text: string };
+type Tooltip = { x: number; y: number; label: string; lines: TipLine[] };
 
 function niceMax(value: number): number {
   if (value <= 0) return 1;
@@ -162,9 +162,12 @@ export function StackedBars(props: {
             .filter((q) => q.raw !== 0)
             .map((q) => {
               const pct = Math.round((q.raw / total) * 100);
-              return normalized
-                ? `${q.name} · ${formatValue(q.raw)} · ${pct}%`
-                : `${q.name} · ${formatValue(q.raw)}`;
+              return {
+                color: q.color,
+                text: normalized
+                  ? `${q.name} · ${formatValue(q.raw)} · ${pct}%`
+                  : `${q.name} · ${formatValue(q.raw)}`,
+              };
             });
           const pctMarks =
             normalized && !dense
@@ -238,17 +241,7 @@ export function StackedBars(props: {
           );
         })}
       </svg>
-      {tip && (
-        <div
-          className="chart-tip"
-          style={{ left: tip.x, top: tip.y } as CSSProperties}
-        >
-          <strong>{tip.label}</strong>
-          {tip.lines.map((line) => (
-            <div key={line}>{line}</div>
-          ))}
-        </div>
-      )}
+      {tip && <ChartTip tip={tip} />}
       <ChartLegend series={series} />
     </div>
   );
@@ -297,25 +290,38 @@ export function PieChart(props: {
   const rOut = 92;
   const rIn = 58;
   const tau = Math.PI * 2;
+  const rMid = (rOut + rIn) / 2;
   let angle = -Math.PI / 2;
+  const items = drawn.map((slice) => {
+    const sweep = total === 0 ? 0 : (slice.value / total) * tau;
+    const start = angle;
+    const end = angle + sweep;
+    angle = end;
+    const [lx, ly] = polar(cx, cy, rMid, (start + end) / 2);
+    return {
+      slice,
+      start,
+      end,
+      sweep,
+      lx,
+      ly,
+      pct: Math.round((slice.value / total) * 100),
+    };
+  });
   const arcs =
-    drawn.length === 0
+    items.length === 0
       ? [
           <circle
             key="empty"
             cx={cx}
             cy={cy}
-            r={(rOut + rIn) / 2}
+            r={rMid}
             fill="none"
             stroke="var(--line)"
             strokeWidth={rOut - rIn}
           />,
         ]
-      : drawn.flatMap((slice) => {
-          const sweep = total === 0 ? 0 : (slice.value / total) * tau;
-          const start = angle;
-          const end = angle + sweep;
-          angle = end;
+      : items.flatMap(({ slice, start, end, sweep }) => {
           const paths =
             sweep >= tau - 1e-6
               ? [
@@ -336,13 +342,31 @@ export function PieChart(props: {
                   y: ev.clientY - rect.top,
                   label: slice.name,
                   lines: [
-                    `${formatValue(slice.value)} · ${formatShare(slice.value, total)}`,
+                    {
+                      color: slice.color,
+                      text: `${formatValue(slice.value)} · ${formatShare(slice.value, total)}`,
+                    },
                   ],
                 });
               }}
             />
           ));
         });
+  const pctMarks = items
+    .filter((item) => item.pct > 0 && item.sweep * rMid >= 14)
+    .map((item) => (
+      <text
+        key={`pct-${item.slice.id}`}
+        x={item.lx}
+        y={item.ly}
+        className="chart-bar-pct"
+        textAnchor="middle"
+        dominantBaseline="central"
+        pointerEvents="none"
+      >
+        {item.pct}%
+      </text>
+    ));
 
   return (
     <div className="pie-wrap">
@@ -359,6 +383,7 @@ export function PieChart(props: {
         onMouseLeave={() => setTip(null)}
       >
         {arcs}
+        {pctMarks}
       </svg>
       {(center || centerLabel) && (
         <div className="pie-center">
@@ -366,14 +391,22 @@ export function PieChart(props: {
           {centerLabel && <div className="stat-label">{centerLabel}</div>}
         </div>
       )}
-      {tip && (
-        <div className="chart-tip" style={{ left: tip.x, top: tip.y }}>
-          <strong>{tip.label}</strong>
-          {tip.lines.map((line) => (
-            <div key={line}>{line}</div>
-          ))}
+      {tip && <ChartTip tip={tip} />}
+    </div>
+  );
+}
+
+function ChartTip(props: { tip: Tooltip }) {
+  const { tip } = props;
+  return (
+    <div className="chart-tip" style={{ left: tip.x, top: tip.y }}>
+      <strong>{tip.label}</strong>
+      {tip.lines.map((line) => (
+        <div key={line.color + line.text} className="chart-tip-row">
+          <i style={{ background: line.color }} aria-hidden />
+          {line.text}
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -479,7 +512,10 @@ export function LineChart(props: {
                   x: (x(i) / width) * rect.width,
                   y: (pad.t / height) * rect.height,
                   label,
-                  lines: series.map((s) => `${s.name} · ${formatValue(s.data[i] ?? 0)}`),
+                  lines: series.map((s) => ({
+                    color: s.color,
+                    text: `${s.name} · ${formatValue(s.data[i] ?? 0)}`,
+                  })),
                 });
               }}
             />
@@ -513,14 +549,7 @@ export function LineChart(props: {
           </g>
         )}
       </svg>
-      {tip && (
-        <div className="chart-tip" style={{ left: tip.x, top: tip.y }}>
-          <strong>{tip.label}</strong>
-          {tip.lines.map((line) => (
-            <div key={line}>{line}</div>
-          ))}
-        </div>
-      )}
+      {tip && <ChartTip tip={tip} />}
       <ChartLegend series={series} />
     </div>
   );

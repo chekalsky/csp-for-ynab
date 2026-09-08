@@ -20,6 +20,7 @@ import {
   setShowIgnored,
 } from "./storage";
 import { Tagging } from "./Tagging";
+import { Loader } from "./pages";
 import {
   BUCKET_LABEL,
   DEFAULT_METRIC,
@@ -76,6 +77,7 @@ export function Dashboard(props: {
   const [excludeCurrentMonth, setExcludeCurrent] = useState(getExcludeCurrentMonth);
   const [ignoreHidden, setIgnoreHiddenState] = useState(getIgnoreHidden);
   const [showIgnored, setShowIgnoredState] = useState(getShowIgnored);
+  const [hideAmounts, setHideAmounts] = useState(false);
   const categories = useMemo(
     () =>
       plan.categories.map((c) =>
@@ -92,6 +94,7 @@ export function Dashboard(props: {
     return true;
   });
   const money = (n: number) => formatMoney(n, plan.currency);
+  const mixMoney = (n: number) => (hideAmounts ? "****" : money(n));
   const withYear = spansYears(months);
   const labels = months.map((m) => monthLabel(m.month, withYear));
   const series = useMemo(
@@ -305,7 +308,6 @@ export function Dashboard(props: {
             />
             Show ignored
           </label>
-          {fetchingMore && <span className="muted">Loading months…</span>}
         </div>
         {(error || rangeMessage || (rangeReady && unmapped > 0)) && (
           <div className="notices">
@@ -320,6 +322,10 @@ export function Dashboard(props: {
         )}
       </div>
 
+      {(fetchingMore || !rangeReady) && !rangeMessage ? (
+        <Loader fill label="Loading months…" />
+      ) : null}
+
       {rangeReady && months.length === 0 && (
         <p className="lede">No months in this range yet.</p>
       )}
@@ -327,7 +333,18 @@ export function Dashboard(props: {
       {rangeReady && (
         <>
       <section>
-        <h1>Your Conscious Spending</h1>
+        <header className="panel-head mix-head">
+          <h1>Your Conscious Spending</h1>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-pressed={hideAmounts}
+            aria-label={hideAmounts ? "Show amounts" : "Hide amounts"}
+            onClick={() => setHideAmounts((v) => !v)}
+          >
+            <EyeIcon slash={hideAmounts} />
+          </button>
+        </header>
         {mixDates && <p className="mix-dates">{mixDates}</p>}
         <p className="lede">
           {ytd.unmapped !== 0
@@ -352,7 +369,7 @@ export function Dashboard(props: {
                   <i className={`swatch swatch-${bucket}`} aria-hidden />
                   <div>
                     <strong>{BUCKET_LABEL[bucket]}</strong>
-                    <div className="mix-amt">{money(ytd[bucket])}</div>
+                    <div className="mix-amt">{mixMoney(ytd[bucket])}</div>
                     <div className="mix-meta">
                       {formatPct(ytd[bucket], total)} ·{" "}
                       {mixMetric(bucket, chartCategories)}
@@ -368,9 +385,9 @@ export function Dashboard(props: {
                 color: COLORS[id],
                 value: ytd[id],
               }))}
-              formatValue={(n) => money(n)}
+              formatValue={mixMoney}
               formatShare={formatPct}
-              center={money(total)}
+              center={mixMoney(total)}
               centerLabel="in this range"
             />
           </div>
@@ -419,6 +436,26 @@ export function Dashboard(props: {
         </>
       )}
     </div>
+  );
+}
+
+function EyeIcon(props: { slash?: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+      {props.slash ? <path d="M4 4l16 16" /> : null}
+    </svg>
   );
 }
 

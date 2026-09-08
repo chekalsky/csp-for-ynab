@@ -28,6 +28,24 @@ export function CspName() {
   return <ExtLink href={CSP_ARTICLE}>Conscious Spending Plan</ExtLink>;
 }
 
+export function Loader(props: { label: string; fill?: boolean }) {
+  return (
+    <div
+      className={props.fill ? "loader loader-fill" : "loader"}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="loader-bars" aria-hidden>
+        <i className="swatch-fixed" />
+        <i className="swatch-investments" />
+        <i className="swatch-savings" />
+        <i className="swatch-guilt_free" />
+      </div>
+      <p>{props.label}</p>
+    </div>
+  );
+}
+
 export function ConnectPage(props: {
   config: AppConfig;
   authorizeUrl: string;
