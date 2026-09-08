@@ -30,18 +30,14 @@ type PctMark = {
   pct: number;
   x: number;
   y: number;
-  color: string;
-  inside: boolean;
 };
 
 function mixPctMarks(
-  parts: { id: string; raw: number; color: string }[],
+  parts: { id: string; raw: number }[],
   total: number,
   yOf: (value: number) => number,
   midX: number,
   barW: number,
-  top: number,
-  bottom: number,
 ): PctMark[] {
   const marks: PctMark[] = [];
   let acc = 0;
@@ -52,37 +48,8 @@ function mixPctMarks(
     acc += share;
     const h = y2 - y1;
     const pct = Math.round(share * 100);
-    if (pct <= 0) continue;
-    const inside = h >= 14 && barW >= 16;
-    marks.push({
-      id: p.id,
-      pct,
-      color: p.color,
-      inside,
-      x: midX,
-      y: y1 + h / 2,
-    });
-  }
-  const out = marks.filter((m) => !m.inside).sort((a, b) => a.y - b.y);
-  const step = 12;
-  for (let i = 1; i < out.length; i++) {
-    if (out[i].y - out[i - 1].y < step) out[i].y = out[i - 1].y + step;
-  }
-  if (out.length > 0) {
-    if (out[0].y < top + 6) {
-      let yy = top + 6;
-      for (const m of out) {
-        m.y = yy;
-        yy += step;
-      }
-    }
-    if (out[out.length - 1].y > bottom - 6) {
-      let yy = bottom - 6;
-      for (let i = out.length - 1; i >= 0; i--) {
-        out[i].y = Math.min(out[i].y, yy);
-        yy -= step;
-      }
-    }
+    if (pct <= 0 || h < 14 || barW < 16) continue;
+    marks.push({ id: p.id, pct, x: midX, y: y1 + h / 2 });
   }
   return marks;
 }
@@ -201,15 +168,7 @@ export function StackedBars(props: {
             });
           const pctMarks =
             normalized && !dense
-            ? mixPctMarks(
-                stack.parts,
-                total,
-                y,
-                x + barW / 2,
-                barW,
-                pad.t,
-                pad.t + innerH,
-              )
+            ? mixPctMarks(stack.parts, total, y, x + barW / 2, barW)
             : [];
           return (
             <g key={labels[i]}>
@@ -250,29 +209,17 @@ export function StackedBars(props: {
                 }}
               />
               {pctMarks.map((m) => (
-                <g key={`pct-${m.id}`} pointerEvents="none">
-                  {!m.inside && (
-                    <rect
-                      x={m.x - 11}
-                      y={m.y - 6}
-                      width={22}
-                      height={12}
-                      rx={2}
-                      fill={m.color}
-                      stroke="var(--sheet)"
-                      strokeWidth={1}
-                    />
-                  )}
-                  <text
-                    x={m.x}
-                    y={m.y}
-                    className="chart-bar-pct"
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                  >
-                    {m.pct}%
-                  </text>
-                </g>
+                <text
+                  key={`pct-${m.id}`}
+                  x={m.x}
+                  y={m.y}
+                  className="chart-bar-pct"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  pointerEvents="none"
+                >
+                  {m.pct}%
+                </text>
               ))}
               {(!dense ||
                 i === 0 ||

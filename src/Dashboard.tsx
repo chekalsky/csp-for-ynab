@@ -23,7 +23,6 @@ import { Tagging } from "./Tagging";
 import {
   BUCKET_LABEL,
   DEFAULT_METRIC,
-  LIFESTYLE_SHOWN,
   SHOWN_BUCKETS,
   type CachedMonth,
   type CachedPlan,
@@ -42,15 +41,6 @@ const COLORS: Record<ShownBucket, string> = {
   unmapped: "#6b3fa0",
   ignore: "#6a7a72",
 };
-
-const MIX_TILES: ShownBucket[] = [
-  "fixed",
-  "savings",
-  "investments",
-  "guilt_free",
-  "unmapped",
-  "ignore",
-];
 
 export function Dashboard(props: {
   plan: CachedPlan;
@@ -96,10 +86,6 @@ export function Dashboard(props: {
   const months = excludeCurrentMonth
     ? rangeMonths.filter((m) => m.month !== utcMonthStart())
     : rangeMonths;
-  const shownBuckets = [
-    ...(excludeInvestments ? LIFESTYLE_SHOWN : SHOWN_BUCKETS),
-    ...(showIgnored ? (["ignore"] as const) : []),
-  ];
   const chartCategories = categories.filter((c) => {
     if (c.bucket === "ignore" && !showIgnored) return false;
     if (excludeInvestments && c.bucket === "investments") return false;
@@ -113,12 +99,12 @@ export function Dashboard(props: {
     [months, chartCategories],
   );
   const ytd = rangeTotals(months, chartCategories);
-  const mixBuckets = MIX_TILES.filter(
-    (bucket) =>
-      shownBuckets.includes(bucket) &&
-      (bucket !== "unmapped" || ytd.unmapped !== 0) &&
-      (bucket !== "ignore" || ytd.ignore !== 0),
-  );
+  const mixBuckets = SHOWN_BUCKETS.filter((bucket) => {
+    if (excludeInvestments && bucket === "investments") return false;
+    if (bucket === "unmapped") return ytd.unmapped !== 0;
+    if (bucket === "ignore") return showIgnored && ytd.ignore !== 0;
+    return true;
+  });
   const total = bucketsTotal(ytd, mixBuckets);
   const unmapped = categories.filter((c) => c.bucket === "unmapped").length;
   const mixDates =
@@ -406,44 +392,7 @@ export function Dashboard(props: {
         <h2>Spending over time</h2>
         <LineChart
           labels={labels}
-          series={[
-            {
-              id: "fixed",
-              name: "Fixed",
-              color: COLORS.fixed,
-              data: months.map((m) =>
-                sumActivity(m, chartCategories, "fixed"),
-              ),
-            },
-            {
-              id: "guilt_free",
-              name: "Guilt-free",
-              color: COLORS.guilt_free,
-              data: months.map((m) =>
-                sumActivity(m, chartCategories, "guilt_free"),
-              ),
-            },
-            ...(ytd.unmapped !== 0
-              ? [
-                  {
-                    id: "unmapped" as const,
-                    name: BUCKET_LABEL.unmapped,
-                    color: COLORS.unmapped,
-                    data: series.map((row) => row.buckets.unmapped),
-                  },
-                ]
-              : []),
-            ...(showIgnored && ytd.ignore !== 0
-              ? [
-                  {
-                    id: "ignore" as const,
-                    name: BUCKET_LABEL.ignore,
-                    color: COLORS.ignore,
-                    data: series.map((row) => row.buckets.ignore),
-                  },
-                ]
-              : []),
-          ]}
+          series={chartSeries}
           formatValue={(n) => money(n)}
           formatTick={(n) => formatCompact(n, plan.currency)}
         />
@@ -496,19 +445,6 @@ function Stat(props: { value: string; label: string; tone?: string }) {
       <div className="stat-label">{props.label}</div>
     </div>
   );
-}
-
-function sumActivity(
-  month: CachedMonth,
-  categories: ResolvedCategory[],
-  bucket: ShownBucket,
-): number {
-  let n = 0;
-  for (const cat of categories) {
-    if (cat.bucket !== bucket) continue;
-    n += -(month.amounts[cat.id]?.activity ?? 0);
-  }
-  return n;
 }
 
 function MonthDrill(props: {

@@ -1,5 +1,7 @@
 import {
+  CHART_BUCKETS,
   DEFAULT_METRIC,
+  SHOWN_BUCKETS,
   type BucketId,
   type CachedCategory,
   type ChartBucket,
@@ -93,28 +95,16 @@ export function metricFor(
 ): Metric {
   const perCat = overrides.metrics[categoryId];
   if (perCat) return perCat;
-  if (bucket === "fixed" || bucket === "investments" || bucket === "savings" || bucket === "guilt_free") {
+  if (isChartBucket(bucket)) {
     return overrides.bucketMetrics[bucket] ?? DEFAULT_METRIC[bucket];
   }
   return "assigned";
 }
 
 export function isChartBucket(bucket: BucketId): bucket is ChartBucket {
-  return (
-    bucket === "fixed" ||
-    bucket === "investments" ||
-    bucket === "savings" ||
-    bucket === "guilt_free"
-  );
+  return CHART_BUCKETS.includes(bucket as ChartBucket);
 }
 
 export function isShownBucket(bucket: BucketId): bucket is ShownBucket {
-  return (
-    bucket === "fixed" ||
-    bucket === "investments" ||
-    bucket === "savings" ||
-    bucket === "guilt_free" ||
-    bucket === "unmapped" ||
-    bucket === "ignore"
-  );
+  return SHOWN_BUCKETS.includes(bucket as ShownBucket);
 }

@@ -107,20 +107,13 @@ export const CHART_BUCKETS: ChartBucket[] = [
   "guilt_free",
 ];
 
-export const LIFESTYLE_BUCKETS: ChartBucket[] = [
+export const SHOWN_BUCKETS: ShownBucket[] = [
   "fixed",
   "savings",
+  "investments",
   "guilt_free",
-];
-
-export const SHOWN_BUCKETS: ShownBucket[] = [
-  ...CHART_BUCKETS,
   "unmapped",
-];
-
-export const LIFESTYLE_SHOWN: ShownBucket[] = [
-  ...LIFESTYLE_BUCKETS,
-  "unmapped",
+  "ignore",
 ];
 
 export const DEFAULT_METRIC: Record<ChartBucket, Metric> = {
