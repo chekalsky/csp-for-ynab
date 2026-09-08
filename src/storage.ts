@@ -4,13 +4,13 @@ import type {
   TokenRecord,
 } from "./types";
 
-const TOKEN = "ynab-csp.token";
-const PLAN = "ynab-csp.planId";
-const OVERRIDES_PREFIX = "ynab-csp.overrides.";
-const CACHE_PREFIX = "ynab-csp.cache.";
-const OAUTH_STATE = "ynab-csp.oauthState";
-const EXCLUDE_INVEST = "ynab-csp.excludeInvestments";
-const PREFIX = "ynab-csp.";
+const PREFIX = "csp-for-ynab.";
+const TOKEN = `${PREFIX}token`;
+const PLAN = `${PREFIX}planId`;
+const OVERRIDES_PREFIX = `${PREFIX}overrides.`;
+const CACHE_PREFIX = `${PREFIX}cache.`;
+const OAUTH_STATE = `${PREFIX}oauthState`;
+const EXCLUDE_INVEST = `${PREFIX}excludeInvestments`;
 
 function readJson<T>(store: Storage, key: string): T | null {
   try {
@@ -28,18 +28,11 @@ function asToken(rec: TokenRecord | null): TokenRecord | null {
 }
 
 export function getToken(): TokenRecord | null {
-  const fresh = asToken(readJson<TokenRecord>(sessionStorage, TOKEN));
-  if (fresh) return fresh;
-  const legacy = asToken(readJson<TokenRecord>(localStorage, TOKEN));
-  if (!legacy) return null;
-  sessionStorage.setItem(TOKEN, JSON.stringify(legacy));
-  localStorage.removeItem(TOKEN);
-  return legacy;
+  return asToken(readJson<TokenRecord>(sessionStorage, TOKEN));
 }
 
 export function setToken(rec: TokenRecord): void {
   sessionStorage.setItem(TOKEN, JSON.stringify(rec));
-  localStorage.removeItem(TOKEN);
 }
 
 export function getSelectedPlanId(): string | null {

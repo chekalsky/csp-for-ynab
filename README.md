@@ -63,3 +63,7 @@ Local deploy: `npm run deploy` (uses `public/config.json` on disk).
 Hidden and internal categories default to Ignore. Unmatched categories show as **Needs a bucket**. Any changes are saved in your browser only. This app does not write tags back to YNAB.
 
 Change `config.json` for your own mappings.
+
+## License
+
+[PolyForm Noncommercial 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0). Personal and other non-commercial use only. Commercial use needs [permission](https://chekalsky.com). Pull requests welcome; by opening a PR you license your changes under these same terms.
