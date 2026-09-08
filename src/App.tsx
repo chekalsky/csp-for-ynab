@@ -392,7 +392,6 @@ function Shell() {
           </button>
         </nav>
       </header>
-      {error && plan && <p className="banner err">{error}</p>}
       {loading && !plan && (
         <main className="connect">
           <p className="lede">Loading plan…</p>
@@ -415,6 +414,7 @@ function Shell() {
           fetchingMore={fetchingMore}
           rangeReady={rangeReady}
           rangeMessage={rangeMessage}
+          error={error}
           overrides={overrides}
           onOverrides={saveOverrides}
         />

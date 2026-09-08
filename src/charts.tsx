@@ -123,9 +123,13 @@ export function StackedBars(props: {
           </g>
         )}
         {stacks.map((stack, i) => {
-          const x = pad.l + gap * i + (gap - barW) / 2;
+          const colX = pad.l + gap * i;
+          const x = colX + (gap - barW) / 2;
           let acc = 0;
           const total = stack.total || 1;
+          const lines = stack.parts
+            .filter((q) => q.raw !== 0)
+            .map((q) => `${q.name} · ${formatValue(q.raw)}`);
           return (
             <g key={labels[i]}>
               {stack.parts.map((p) => {
@@ -142,22 +146,28 @@ export function StackedBars(props: {
                     width={barW}
                     height={h}
                     fill={p.color}
-                    rx={1.5}
-                    onMouseMove={(ev) => {
-                      const rect = ev.currentTarget.ownerSVGElement?.getBoundingClientRect();
-                      if (!rect) return;
-                      setTip({
-                        x: ev.clientX - rect.left,
-                        y: ev.clientY - rect.top,
-                        label: labels[i],
-                        lines: stack.parts
-                          .filter((q) => q.raw !== 0)
-                          .map((q) => `${q.name} · ${formatValue(q.raw)}`),
-                      });
-                    }}
+                    pointerEvents="none"
                   />
                 );
               })}
+              <rect
+                x={colX}
+                y={pad.t}
+                width={gap}
+                height={innerH}
+                fill="transparent"
+                onMouseEnter={(ev) => {
+                  const svg = ev.currentTarget.ownerSVGElement?.getBoundingClientRect();
+                  if (!svg) return;
+                  const next = {
+                    x: ((colX + gap / 2) / width) * svg.width,
+                    y: (pad.t / height) * svg.height,
+                    label: labels[i],
+                    lines,
+                  };
+                  setTip((prev) => (prev?.label === next.label ? prev : next));
+                }}
+              />
               <text
                 x={x + barW / 2}
                 y={height - 10}

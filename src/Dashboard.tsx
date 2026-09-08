@@ -50,6 +50,7 @@ export function Dashboard(props: {
   fetchingMore: boolean;
   rangeReady: boolean;
   rangeMessage: string | null;
+  error: string | null;
   overrides: PlanOverrides;
   onOverrides: (next: PlanOverrides) => void;
 }) {
@@ -63,6 +64,7 @@ export function Dashboard(props: {
     fetchingMore,
     rangeReady,
     rangeMessage,
+    error,
     overrides,
     onOverrides,
   } = props;
@@ -192,14 +194,18 @@ export function Dashboard(props: {
           </label>
           {fetchingMore && <span className="muted">Loading months…</span>}
         </div>
+        {(error || rangeMessage || (rangeReady && unmapped > 0)) && (
+          <div className="notices">
+            {error && <p className="banner err">{error}</p>}
+            {rangeMessage && <p className="banner err">{rangeMessage}</p>}
+            {rangeReady && unmapped > 0 && (
+              <a className="banner" href="#tagging">
+                {unmapped} {unmapped === 1 ? "category needs" : "categories need"} a bucket
+              </a>
+            )}
+          </div>
+        )}
       </div>
-
-      {rangeMessage && <p className="banner err">{rangeMessage}</p>}
-      {rangeReady && unmapped > 0 && (
-        <a className="banner" href="#tagging">
-          {unmapped} {unmapped === 1 ? "category needs" : "categories need"} a bucket
-        </a>
-      )}
 
       {rangeReady && months.length === 0 && (
         <p className="lede">No months in this range yet.</p>

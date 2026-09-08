@@ -468,6 +468,16 @@ code {
   margin: 0;
 }
 
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.notices .banner {
+  margin: 0;
+}
+
 .chips,
 .seg {
   display: inline-flex;
