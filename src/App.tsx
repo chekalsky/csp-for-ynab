@@ -8,6 +8,8 @@ import { cachedMonthIds, filterMonths, monthIdsInRange, rangeComplete, utcMonthS
 import {
   emptyOverrides,
   getCache,
+  planForId,
+  withPlanCurrency,
   getDateRange,
   getPlanOverrides,
   getSelectedPlanId,
@@ -77,6 +79,8 @@ function Shell() {
   const [rateLimited, setRateLimited] = useState(false);
   const fromOauthRef = useRef(false);
   const fillAttempt = useRef("");
+  const planIdRef = useRef(planId);
+  planIdRef.current = planId;
 
   useEffect(() => {
     const captured = captureOauthHash();
@@ -127,11 +131,16 @@ function Shell() {
 
   const hydratePlan = useCallback(
     async (access: TokenRecord, summary: PlanSummary, force: boolean) => {
+      const selected = () => planIdRef.current === summary.id;
       if (!force) {
         const cached = getCache(summary.id);
         if (cached) {
-          setPlan(cached);
-          return cached;
+          const plan = withPlanCurrency(cached, summary.currency_format);
+          if (selected()) {
+            if (plan !== cached) setCache(plan);
+            setPlan(plan);
+          }
+          return plan;
         }
       }
       try {
@@ -144,6 +153,7 @@ function Shell() {
           months: [...byId.values()].sort((a, b) => a.month.localeCompare(b.month)),
         };
         setCache(plan);
+        if (!selected()) return plan;
         setPlan(plan);
         if (loaded.rateLimited) {
           setRateLimited(true);
@@ -155,10 +165,14 @@ function Shell() {
       } catch (err) {
         const cached = getCache(summary.id);
         if (cached && err instanceof ApiError && err.status === 429) {
-          setPlan(cached);
-          setRateLimited(true);
-          setError(RATE_LIMIT_CACHED);
-          return cached;
+          const plan = withPlanCurrency(cached, summary.currency_format);
+          if (selected()) {
+            if (plan !== cached) setCache(plan);
+            setPlan(plan);
+            setRateLimited(true);
+            setError(RATE_LIMIT_CACHED);
+          }
+          return plan;
         }
         throw err;
       }
@@ -172,13 +186,18 @@ function Shell() {
     if (!summary) return;
     setSelectedPlanId(planId);
     setOverrides(getPlanOverrides(planId));
+    setPlan((prev) => planForId(planId, prev));
+    setRateLimited(false);
     setLoading(true);
     setError(null);
     void hydratePlan(token, summary, false)
       .catch((err: unknown) => {
+        if (planIdRef.current !== summary.id) return;
         setError(noCacheError(err));
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (planIdRef.current === summary.id) setLoading(false);
+      });
   }, [token, planId, plans, hydratePlan]);
 
   useEffect(() => {

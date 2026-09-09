@@ -2,11 +2,13 @@ import { expect, test } from "vitest";
 import { FALLBACK_CURRENCY } from "./format";
 import {
   getCache,
+  planForId,
   getDateRange,
   getToken,
   setCache,
   setDateRange,
   setToken,
+  withPlanCurrency,
   wipeAll,
 } from "./storage";
 
@@ -32,6 +34,45 @@ test("invalid range ids fall back to last_12; last_year migrates", () => {
     from: "2026-01-01",
     to: "2026-03-01",
   });
+});
+
+test("switching plans does not keep another plan's dashboard", () => {
+  const a = {
+    planId: "a",
+    planName: "A",
+    currency: FALLBACK_CURRENCY,
+    fetchedAt: 1,
+    categories: [],
+    months: [],
+    monthIds: [],
+  };
+  setCache(a);
+  expect(planForId("b", a)).toBeNull();
+  const b = { ...a, planId: "b", planName: "B" };
+  setCache(b);
+  expect(planForId("b", a)?.planId).toBe("b");
+  expect(planForId("a", a)).toBe(a);
+});
+
+test("cached plan takes currency from the selected plan", () => {
+  const cached = {
+    planId: "a",
+    planName: "A",
+    currency: FALLBACK_CURRENCY,
+    fetchedAt: 1,
+    categories: [],
+    months: [],
+    monthIds: [],
+  };
+  const usd = {
+    ...FALLBACK_CURRENCY,
+    iso_code: "USD",
+    currency_symbol: "$",
+    decimal_separator: ".",
+    group_separator: ",",
+  };
+  expect(withPlanCurrency(cached, usd).currency.iso_code).toBe("USD");
+  expect(withPlanCurrency(cached, null).currency.iso_code).toBe("EUR");
 });
 
 test("cache backfills monthIds from months", () => {

@@ -3,6 +3,7 @@ import {
   ensureMonths,
   fetchMonthDetails,
   listPlans,
+  loadPlan,
   pickInitialPlanId,
 } from "./api";
 import type { CachedMonth, PlanSummary } from "./types";
@@ -103,4 +104,98 @@ test("429 marks the month fetch as rate-limited", async () => {
   const result = await fetchMonthDetails("tok", "plans", "p1", ["2026-01-01"]);
   expect(result.rateLimited).toBe(true);
   expect(result.months).toEqual([]);
+});
+
+const USD = {
+  iso_code: "USD",
+  example_format: "123,456.78",
+  decimal_digits: 2,
+  decimal_separator: ".",
+  symbol_first: true,
+  group_separator: ",",
+  currency_symbol: "$",
+  display_symbol: true,
+};
+
+test("listPlans keeps currency_format from the plan", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      json(200, {
+        data: {
+          plans: [{ id: "p1", name: "USD Plan", currency_format: USD }],
+        },
+      }),
+    ),
+  );
+  const listed = await listPlans("tok");
+  expect(listed.plans[0].currency_format).toEqual(USD);
+});
+
+test("loadPlan uses the plan's currency and skips settings", async () => {
+  const fetch = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/categories")) {
+      return json(200, { data: { category_groups: [] } });
+    }
+    if (url.endsWith("/months")) {
+      return json(200, { data: { months: [] } });
+    }
+    throw new Error(url);
+  });
+  vi.stubGlobal("fetch", fetch);
+  const loaded = await loadPlan("tok", "plans", {
+    id: "p1",
+    name: "USD Plan",
+    currency_format: USD,
+  });
+  expect(loaded.plan.currency.iso_code).toBe("USD");
+  expect(loaded.plan.currency.currency_symbol).toBe("$");
+  expect(fetch.mock.calls.some((c) => String(c[0]).includes("/settings"))).toBe(
+    false,
+  );
+});
+
+test("loadPlan falls back to settings, then EUR", async () => {
+  const fetch = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/categories")) {
+      return json(200, { data: { category_groups: [] } });
+    }
+    if (url.endsWith("/months")) {
+      return json(200, { data: { months: [] } });
+    }
+    if (url.endsWith("/settings")) {
+      return json(404, { error: { detail: "gone" } });
+    }
+    throw new Error(url);
+  });
+  vi.stubGlobal("fetch", fetch);
+  const usdSettings = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/categories")) {
+      return json(200, { data: { category_groups: [] } });
+    }
+    if (url.endsWith("/months")) {
+      return json(200, { data: { months: [] } });
+    }
+    if (url.endsWith("/settings")) {
+      return json(200, { data: { settings: { currency_format: USD } } });
+    }
+    throw new Error(url);
+  });
+  vi.stubGlobal("fetch", usdSettings);
+  const fromSettings = await loadPlan("tok", "plans", {
+    id: "p1",
+    name: "USD Plan",
+    currency_format: null,
+  });
+  expect(fromSettings.plan.currency.iso_code).toBe("USD");
+  vi.stubGlobal("fetch", fetch);
+  const fallback = await loadPlan("tok", "plans", {
+    id: "p1",
+    name: "No currency",
+    currency_format: null,
+  });
+  expect(fallback.plan.currency.iso_code).toBe("EUR");
 });

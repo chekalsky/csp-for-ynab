@@ -6,6 +6,12 @@ export function utcMonthStart(d = new Date()): string {
   return `${y}-${m}-01`;
 }
 
+export function lastLiveMonth(monthIds: string[], now = new Date()): string {
+  const current = utcMonthStart(now);
+  const last = monthIds[monthIds.length - 1] ?? current;
+  return last < current ? last : current;
+}
+
 export function shiftMonth(month: string, delta: number): string {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(Date.UTC(y, m - 1 + delta, 1));
@@ -31,8 +37,7 @@ export function rangeBounds(
 ): { start: string; end: string } | null {
   const current = utcMonthStart(now);
   const first = monthIds[0];
-  const last = monthIds[monthIds.length - 1] ?? current;
-  const endCap = last < current ? last : current;
+  const endCap = lastLiveMonth(monthIds, now);
 
   switch (range.id) {
     case "all":
@@ -54,9 +59,10 @@ export function rangeBounds(
     case "last_24":
       return { start: shiftMonth(current, -23), end: endCap };
     case "custom": {
-      let start = range.from ?? first ?? current;
-      let end = range.to ?? endCap;
+      let start = inputToMonth(range.from ?? first ?? current);
+      let end = inputToMonth(range.to ?? endCap);
       if (start > end) [start, end] = [end, start];
+      if (end > endCap) end = endCap;
       return { start, end };
     }
     default:

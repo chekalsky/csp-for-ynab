@@ -57,6 +57,27 @@ test("custom swaps from/to when inverted", () => {
   ).toEqual({ start: "2026-01-01", end: "2026-08-01" });
 });
 
+test("custom does not include future plan months", () => {
+  expect(
+    rangeBounds({ id: "custom", from: "2025-11-01", to: "2026-10-01" }, IDS, NOW),
+  ).toEqual({ start: "2025-11-01", end: "2026-09-01" });
+  expect(
+    rangeComplete(
+      IDS,
+      [
+        month("2025-11-01"),
+        month("2025-12-01"),
+        month("2026-01-01"),
+        month("2026-07-01"),
+        month("2026-08-01"),
+        month("2026-09-01"),
+      ],
+      { id: "custom", from: "2025-11-01", to: "2026-10-01" },
+      NOW,
+    ),
+  ).toBe(true);
+});
+
 test("filterMonths drops deleted rows", () => {
   const months: CachedMonth[] = [
     month("2026-07-01"),

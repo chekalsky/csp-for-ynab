@@ -269,7 +269,9 @@ export async function loadPlan(
   const [catBody, monthsBody, settingsBody] = await Promise.all([
     apiGet(token, `${prefix}/${summary.id}/categories`),
     apiGet(token, `${prefix}/${summary.id}/months`),
-    apiGet(token, `${prefix}/${summary.id}/settings`).catch(() => null),
+    summary.currency_format
+      ? Promise.resolve(null)
+      : apiGet(token, `${prefix}/${summary.id}/settings`).catch(() => null),
   ]);
 
   const catData = asRecord(asRecord(catBody)?.data);
@@ -290,8 +292,8 @@ export async function loadPlan(
 
   const settings = asRecord(asRecord(asRecord(settingsBody)?.data)?.settings);
   const currency =
-    parseCurrency(settings?.currency_format) ??
     summary.currency_format ??
+    parseCurrency(settings?.currency_format) ??
     FALLBACK_CURRENCY;
 
   return {

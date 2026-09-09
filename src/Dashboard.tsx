@@ -8,7 +8,7 @@ import {
   visibleAmount,
 } from "./metrics";
 import { resolveCategory, type ResolvedCategory } from "./mapping";
-import { inputToMonth, monthToInput, pastYears, RANGE_PRESETS, rangeComplete, spansYears, utcMonthStart } from "./range";
+import { inputToMonth, lastLiveMonth, monthToInput, pastYears, RANGE_PRESETS, rangeComplete, spansYears, utcMonthStart } from "./range";
 import {
   getExcludeCurrentMonth,
   getExcludeInvestments,
@@ -141,6 +141,7 @@ export function Dashboard(props: {
     }
   }, [months, monthId]);
   const month = months.find((m) => m.month === monthId) ?? months[months.length - 1];
+  const liveTo = lastLiveMonth(monthIds);
   const chartSeries = mixBuckets.map((id) => ({
     id,
     name: BUCKET_LABEL[id],
@@ -170,8 +171,9 @@ export function Dashboard(props: {
 
   function pickRange(id: DateRangeId) {
     if (id === "custom") {
-      const to = monthIds[monthIds.length - 1];
-      const from = monthIds[Math.max(0, monthIds.length - 12)] ?? to;
+      const to = lastLiveMonth(monthIds);
+      const live = monthIds.filter((month) => month <= to);
+      const from = live[Math.max(0, live.length - 12)] ?? to;
       onRange({ id, from, to });
       return;
     }
@@ -246,12 +248,12 @@ export function Dashboard(props: {
                   type="month"
                   value={monthToInput(range.from ?? monthIds[0] ?? "")}
                   min={monthToInput(monthIds[0] ?? "")}
-                  max={monthToInput(monthIds[monthIds.length - 1] ?? "")}
+                  max={monthToInput(liveTo)}
                   onChange={(e) =>
                     onRange({
                       id: "custom",
                       from: inputToMonth(e.target.value),
-                      to: range.to ?? monthIds[monthIds.length - 1],
+                      to: range.to && range.to <= liveTo ? range.to : liveTo,
                     })
                   }
                 />
@@ -260,9 +262,11 @@ export function Dashboard(props: {
                 To
                 <input
                   type="month"
-                  value={monthToInput(range.to ?? monthIds[monthIds.length - 1] ?? "")}
+                  value={monthToInput(
+                    range.to && range.to <= liveTo ? range.to : liveTo,
+                  )}
                   min={monthToInput(monthIds[0] ?? "")}
-                  max={monthToInput(monthIds[monthIds.length - 1] ?? "")}
+                  max={monthToInput(liveTo)}
                   onChange={(e) =>
                     onRange({
                       id: "custom",
@@ -322,7 +326,7 @@ export function Dashboard(props: {
         )}
       </div>
 
-      {(fetchingMore || !rangeReady) && !rangeMessage ? (
+      {fetchingMore || (!rangeReady && !error && !rangeMessage) ? (
         <Loader fill label="Loading months…" />
       ) : null}
 

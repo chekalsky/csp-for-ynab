@@ -159,6 +159,19 @@ export function getCache(planId: string): CachedPlan | null {
   return rec;
 }
 
+/** Shown plan must belong to the selected id; otherwise that id's cache, or nothing. */
+export function planForId(planId: string, current: CachedPlan | null): CachedPlan | null {
+  if (current?.planId === planId) return current;
+  return getCache(planId);
+}
+
+export function withPlanCurrency(
+  plan: CachedPlan,
+  fromPlan: CachedPlan["currency"] | null | undefined,
+): CachedPlan {
+  return fromPlan ? { ...plan, currency: fromPlan } : plan;
+}
+
 export function setCache(plan: CachedPlan): void {
   localStorage.setItem(CACHE_PREFIX + plan.planId, JSON.stringify(plan));
 }
