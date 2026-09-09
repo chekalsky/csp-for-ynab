@@ -119,8 +119,7 @@ export function ConnectPage(props: {
         )}
         <p className="fine">
           Read-only access. The token never leaves this tab.<br/>
-          I do not track or
-          collect your personal information. <a href="/privacy">Privacy</a>.
+          I do not collect your personal information. <a href="/privacy">Privacy</a>.
         </p>
       </div>
       <p className="fine byline">
@@ -199,7 +198,9 @@ export function PrivacyPage() {
         <CspName /> for YNAB maps a YNAB plan onto{" "}
         <ExtLink href={IWT_URL}>Ramit Sethi</ExtLink>’s four Conscious Spending buckets and
         shows you the resulting charts. That is the only purpose. We do not sell
-        data, show ads, or run analytics.
+        data or show ads. Page views (not YNAB data) go to{" "}
+        <ExtLink href="https://simpleanalytics.com">Simple Analytics</ExtLink>,
+        which does not use cookies or collect personal information.
       </p>
       <h2>What we ask YNAB for</h2>
       <p>
@@ -229,7 +230,7 @@ export function PrivacyPage() {
         Settings → Authorized Applications. Questions:{" "}
         <a href="https://chekalsky.com">chekalsky.com</a>.
       </p>
-      <p className="fine">Last updated 8 September 2026.</p>
+        <p className="fine">Last updated 9 September 2026.</p>
       <p className="fine">
         <a href="/">Back</a>
       </p>
