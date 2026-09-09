@@ -433,7 +433,7 @@ function Shell() {
             disabled={refreshing}
           >
             <RefreshIcon />
-            {refreshing ? "Refreshing…" : "Refresh"}
+            Refresh
           </button>
           <button type="button" className="text-btn" onClick={resetAll}>
             <ResetIcon />
