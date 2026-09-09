@@ -56,9 +56,9 @@ Local deploy: `npm run deploy` (uses `public/config.json` on disk).
 | --- | --- |
 | Ignore | `[CSP-Ignore]` |
 | Fixed Costs | `[CSP-Fixed]`, Fixed Expenses, Fixed Costs |
-| Guilt-free spending | `[CSP-GuiltFree]`, Guilt-Free, Wants |
+| Guilt-free spending | `[CSP-GuiltFree]`, Guilt-Free |
 | Investments | `[CSP-Investments]`, Investments, 📈 |
-| Savings | `[CSP-Savings]`, Savings, 💰, Wishfarm |
+| Savings | `[CSP-Savings]`, Savings, 💰 |
 
 Hidden and internal categories default to Ignore. Unmatched categories show as **Needs a bucket**. Any changes are saved in your browser only. This app does not write tags back to YNAB.
 

@@ -22,6 +22,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - run: npm test
       - run: npm run build
         env:
           YNAB_CLIENT_ID: ${{ secrets.YNAB_CLIENT_ID }}

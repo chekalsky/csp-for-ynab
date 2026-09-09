@@ -61,4 +61,7 @@ function versionPublicAssets(): Plugin {
 
 export default defineConfig({
   plugins: [react(), reactRefreshShim(), versionPublicAssets()],
+  test: {
+    setupFiles: ["./src/test-setup.ts"],
+  },
 });

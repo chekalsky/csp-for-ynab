@@ -10,9 +10,9 @@ const FALLBACK: AppConfig = {
   markers: [
     { bucket: "ignore", patterns: ["[CSP-Ignore]"] },
     { bucket: "fixed", patterns: ["[CSP-Fixed]", "Fixed Expenses", "Fixed Costs"] },
-    { bucket: "guilt_free", patterns: ["[CSP-GuiltFree]", "Guilt-Free", "Wants"] },
+    { bucket: "guilt_free", patterns: ["[CSP-GuiltFree]", "Guilt-Free"] },
     { bucket: "investments", patterns: ["[CSP-Investments]", "Investments", "📈"] },
-    { bucket: "savings", patterns: ["[CSP-Savings]", "Savings", "💰", "Wishfarm"] },
+    { bucket: "savings", patterns: ["[CSP-Savings]", "Savings", "💰"] },
   ],
 };
 
