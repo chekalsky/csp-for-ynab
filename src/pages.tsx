@@ -209,6 +209,11 @@ export function PrivacyPage() {
         request write access. We do not read the transaction register. Your
         browser talks to <code>https://api.ynab.com</code> directly.
       </p>
+      <p>
+        If we later access YNAB data types we do not access today, or use the
+        data differently, we will update this policy first and prompt you for
+        renewed consent before that access happens.
+      </p>
       <h2>Where data lives</h2>
       <p>
         Nothing is uploaded to this app’s host. Cloudflare Pages only serves the
@@ -230,7 +235,7 @@ export function PrivacyPage() {
         Settings → Authorized Applications. Questions:{" "}
         <a href="https://chekalsky.com">chekalsky.com</a>.
       </p>
-        <p className="fine">Last updated 9 September 2026.</p>
+      <p className="fine">Last updated 21 September 2026.</p>
       <p className="fine">
         <a href="/">Back</a>
       </p>
