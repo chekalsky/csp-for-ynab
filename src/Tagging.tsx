@@ -78,10 +78,11 @@ export function Tagging(props: {
         <div>
           <h2>Map categories</h2>
           <p className="lede">
-            To automatically assign a bucket, the app checks the category name, then the note, then the YNAB's
-            group. First match wins. Set a whole group, then override a
-            category if it doesn’t belong. Changes stay in this browser —
-            nothing is written back to YNAB.
+            You can also add a marker to a category name or note—or to a group
+            name—to help the app assign the bucket automatically. Your choices
+            are remembered locally, but markers can be handy for long-term use.
+            The app checks the category name and note before the YNAB group
+            name. The first marker match wins.
           </p>
         </div>
         {unmapped > 0 && (
