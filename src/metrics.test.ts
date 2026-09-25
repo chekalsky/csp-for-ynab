@@ -71,3 +71,42 @@ test("series and totals skip missing rows as zero; ignore stays in its bucket", 
 test("meanBuckets is 0 for an empty series", () => {
   expect(meanBuckets([], ["fixed"])).toBe(0);
 });
+
+test("monthly adjustments apply once per month in series and range totals", () => {
+  const cats = [resolved({ id: "rent", name: "Rent [CSP-Fixed]" })];
+  const months: CachedMonth[] = [
+    {
+      month: "2026-01-01",
+      deleted: false,
+      amounts: { rent: { budgeted: 0, activity: -200_000 } },
+    },
+    {
+      month: "2026-02-01",
+      deleted: false,
+      amounts: { rent: { budgeted: 0, activity: -200_000 } },
+    },
+  ];
+  const adjustments = { investments: 1_000_000, fixed: -50_000 };
+  const series = monthSeries(months, cats, adjustments);
+  expect(series[0].buckets.fixed).toBe(150_000);
+  expect(series[0].buckets.investments).toBe(1_000_000);
+  expect(series[1].buckets.fixed).toBe(150_000);
+  expect(series[1].buckets.investments).toBe(1_000_000);
+  expect(rangeTotals(months, cats, adjustments).fixed).toBe(300_000);
+  expect(rangeTotals(months, cats, adjustments).investments).toBe(2_000_000);
+});
+
+test("absent or zero adjustments are a no-op", () => {
+  const cats = [resolved({ id: "rent", name: "Rent [CSP-Fixed]" })];
+  const months: CachedMonth[] = [
+    {
+      month: "2026-01-01",
+      deleted: false,
+      amounts: { rent: { budgeted: 0, activity: -200_000 } },
+    },
+  ];
+  expect(monthSeries(months, cats)[0].buckets.fixed).toBe(200_000);
+  expect(monthSeries(months, cats, {})[0].buckets.fixed).toBe(200_000);
+  expect(monthSeries(months, cats, { fixed: 0 })[0].buckets.fixed).toBe(200_000);
+  expect(rangeTotals(months, cats).fixed).toBe(200_000);
+});

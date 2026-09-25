@@ -81,6 +81,8 @@ export type PlanOverrides = {
   groups: Record<string, BucketId>;
   metrics: Record<string, Metric>;
   bucketMetrics: Partial<Record<ChartBucket, Metric>>;
+  /** Milliunits added to each month’s bucket total (e.g. pre-tax 401k). */
+  adjustments: Partial<Record<ChartBucket, number>>;
 };
 
 export type DateRangeId =

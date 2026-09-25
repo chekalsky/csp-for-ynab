@@ -58,7 +58,13 @@ export function setSelectedPlanId(id: string): void {
 }
 
 export function emptyOverrides(): PlanOverrides {
-  return { buckets: {}, groups: {}, metrics: {}, bucketMetrics: {} };
+  return {
+    buckets: {},
+    groups: {},
+    metrics: {},
+    bucketMetrics: {},
+    adjustments: {},
+  };
 }
 
 function asOverrides(rec: PlanOverrides | null): PlanOverrides {
@@ -68,6 +74,7 @@ function asOverrides(rec: PlanOverrides | null): PlanOverrides {
     groups: rec.groups ?? {},
     metrics: rec.metrics ?? {},
     bucketMetrics: rec.bucketMetrics ?? {},
+    adjustments: rec.adjustments ?? {},
   };
 }
 

@@ -463,6 +463,68 @@ code {
   font-size: 0.8rem;
 }
 
+.adjustments .lede {
+  margin: 0.25rem 0 0.85rem;
+}
+
+.adj-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.55rem 0.85rem;
+}
+
+.adj-field {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.45rem;
+  row-gap: 0.25rem;
+  align-items: center;
+}
+
+.adj-field .swatch {
+  grid-row: 1;
+}
+
+.adj-label {
+  grid-row: 1;
+  font-size: 0.82rem;
+}
+
+.adj-input {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.2rem 0.45rem;
+  background: var(--bg);
+}
+
+.adj-sym {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.adj-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.2rem 0;
+}
+
+.adj-input input:focus {
+  outline: none;
+}
+
+.adj-input:focus-within {
+  border-color: var(--ink);
+}
+
 .mix-amt {
   font-variant-numeric: tabular-nums;
   font-size: 1.25rem;

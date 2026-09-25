@@ -1,4 +1,10 @@
-import { type CachedMonth, type Metric, type ShownBucket } from "./types";
+import {
+  CHART_BUCKETS,
+  type CachedMonth,
+  type ChartBucket,
+  type Metric,
+  type ShownBucket,
+} from "./types";
 import { isShownBucket, type ResolvedCategory } from "./mapping";
 
 export function amountFor(
@@ -24,6 +30,8 @@ export function visibleAmount(
 
 export type BucketTotals = Record<ShownBucket, number>;
 
+export type BucketAdjustments = Partial<Record<ChartBucket, number>>;
+
 export function emptyTotals(): BucketTotals {
   return {
     fixed: 0,
@@ -33,6 +41,17 @@ export function emptyTotals(): BucketTotals {
     unmapped: 0,
     ignore: 0,
   };
+}
+
+export function applyAdjustments(
+  buckets: BucketTotals,
+  adjustments?: BucketAdjustments,
+): void {
+  if (!adjustments) return;
+  for (const bucket of CHART_BUCKETS) {
+    const value = adjustments[bucket];
+    if (value) buckets[bucket] += value;
+  }
 }
 
 export function bucketsTotal(t: BucketTotals, keys: ShownBucket[]): number {
@@ -47,6 +66,7 @@ export type MonthSeries = {
 export function monthSeries(
   months: CachedMonth[],
   categories: ResolvedCategory[],
+  adjustments?: BucketAdjustments,
 ): MonthSeries[] {
   const mapped = categories.filter((c) => isShownBucket(c.bucket));
   return months.map((m) => {
@@ -61,6 +81,7 @@ export function monthSeries(
         cat.metric,
       );
     }
+    applyAdjustments(buckets, adjustments);
     return { month: m.month, buckets };
   });
 }
@@ -68,6 +89,7 @@ export function monthSeries(
 export function rangeTotals(
   months: CachedMonth[],
   categories: ResolvedCategory[],
+  adjustments?: BucketAdjustments,
 ): BucketTotals {
   const buckets = emptyTotals();
   const mapped = categories.filter((c) => isShownBucket(c.bucket));
@@ -82,6 +104,7 @@ export function rangeTotals(
         cat.metric,
       );
     }
+    applyAdjustments(buckets, adjustments);
   }
   return buckets;
 }

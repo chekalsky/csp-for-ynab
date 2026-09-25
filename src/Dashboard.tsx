@@ -1,11 +1,20 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { LineChart, PieChart, StackedBars } from "./charts";
-import { formatCompact, formatMoney, formatPct, monthFull, monthLabel, monthSpanLabel } from "./format";
+import {
+  formatCompact,
+  formatMoney,
+  formatPct,
+  milliToUnits,
+  monthFull,
+  monthLabel,
+  monthSpanLabel,
+} from "./format";
 import {
   bucketsTotal,
   monthSeries,
   rangeTotals,
   visibleAmount,
+  type BucketAdjustments,
 } from "./metrics";
 import { resolveCategory, type ResolvedCategory } from "./mapping";
 import { inputToMonth, lastLiveMonth, monthToInput, pastYears, RANGE_PRESETS, rangeComplete, spansYears, utcMonthStart } from "./range";
@@ -23,10 +32,12 @@ import { Tagging } from "./Tagging";
 import { Loader } from "./pages";
 import {
   BUCKET_LABEL,
+  CHART_BUCKETS,
   DEFAULT_METRIC,
   SHOWN_BUCKETS,
   type CachedMonth,
   type CachedPlan,
+  type ChartBucket,
   type DateRange,
   type DateRangeId,
   type Marker,
@@ -93,15 +104,20 @@ export function Dashboard(props: {
     if (excludeInvestments && c.bucket === "investments") return false;
     return true;
   });
+  const adjustments = useMemo((): BucketAdjustments => {
+    const next = { ...overrides.adjustments };
+    if (excludeInvestments) delete next.investments;
+    return next;
+  }, [overrides.adjustments, excludeInvestments]);
   const money = (n: number) => formatMoney(n, plan.currency);
   const mixMoney = (n: number) => (hideAmounts ? "****" : money(n));
   const withYear = spansYears(months);
   const labels = months.map((m) => monthLabel(m.month, withYear));
   const series = useMemo(
-    () => monthSeries(months, chartCategories),
-    [months, chartCategories],
+    () => monthSeries(months, chartCategories, adjustments),
+    [months, chartCategories, adjustments],
   );
-  const ytd = rangeTotals(months, chartCategories);
+  const ytd = rangeTotals(months, chartCategories, adjustments);
   const mixBuckets = SHOWN_BUCKETS.filter((bucket) => {
     if (excludeInvestments && bucket === "investments") return false;
     if (bucket === "unmapped") return ytd.unmapped !== 0;
@@ -167,6 +183,14 @@ export function Dashboard(props: {
   function toggleShowIgnored(checked: boolean) {
     setShowIgnoredState(checked);
     setShowIgnored(checked);
+  }
+
+  function setAdjustment(bucket: ChartBucket, raw: string) {
+    const adjustments = { ...overrides.adjustments };
+    const units = raw.trim() === "" ? NaN : Number(raw);
+    if (!Number.isFinite(units) || units === 0) delete adjustments[bucket];
+    else adjustments[bucket] = Math.round(units * 1000);
+    saveOverrides({ ...overrides, adjustments });
   }
 
   function pickRange(id: DateRangeId) {
@@ -398,6 +422,42 @@ export function Dashboard(props: {
         )}
       </section>
 
+      <section className="adjustments">
+        <h2>Monthly adjustments (optional)</h2>
+        <p className="lede">
+          Alter each bucket with monthly amount (e.g. to reflect your pre-tax
+          401k that you don't enter into YNAB). You can also use negative
+          values.
+        </p>
+        <div className="adj-grid">
+          {CHART_BUCKETS.map((bucket) => {
+            const milli = overrides.adjustments[bucket];
+            const symbol = plan.currency.display_symbol
+              ? plan.currency.currency_symbol
+              : plan.currency.iso_code;
+            return (
+              <label key={bucket} className="adj-field">
+                <span className={`swatch swatch-${bucket}`} aria-hidden />
+                <span className="adj-label">{BUCKET_LABEL[bucket]}</span>
+                <span className="adj-input">
+                  <span className="adj-sym" aria-hidden>
+                    {symbol}
+                  </span>
+                  <input
+                    type="number"
+                    step="any"
+                    placeholder="0"
+                    value={milli ? milliToUnits(milli) : ""}
+                    onChange={(e) => setAdjustment(bucket, e.target.value)}
+                    aria-label={`${BUCKET_LABEL[bucket]} monthly adjustment`}
+                  />
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </section>
+
       <section>
         <h2>Mix of the month</h2>
         <StackedBars
@@ -425,6 +485,7 @@ export function Dashboard(props: {
           months={months}
           categories={chartCategories}
           buckets={mixBuckets}
+          adjustments={adjustments}
           money={money}
           monthId={month.month}
           onMonth={setMonthId}
@@ -493,11 +554,13 @@ function MonthDrill(props: {
   months: CachedMonth[];
   categories: ResolvedCategory[];
   buckets: ShownBucket[];
+  adjustments: BucketAdjustments;
   money: (n: number, digits?: number) => string;
   monthId: string;
   onMonth: (id: string) => void;
 }) {
-  const { month, months, categories, buckets, money, onMonth } = props;
+  const { month, months, categories, buckets, adjustments, money, onMonth } =
+    props;
   const rows = buckets.map((bucket) => {
     const cats = categories
       .filter((c) => c.bucket === bucket)
@@ -513,8 +576,12 @@ function MonthDrill(props: {
       })
       .filter((c) => c.value !== 0)
       .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
-    const total = cats.reduce((s, c) => s + c.value, 0);
-    return { bucket, cats, total };
+    const adjustment =
+      bucket !== "unmapped" && bucket !== "ignore"
+        ? adjustments[bucket] ?? 0
+        : 0;
+    const total = cats.reduce((s, c) => s + c.value, 0) + adjustment;
+    return { bucket, cats, adjustment, total };
   });
   const life = rows.reduce((s, r) => s + r.total, 0);
 
@@ -549,7 +616,7 @@ function MonthDrill(props: {
           />
         ))}
       </div>
-      {rows.some((r) => r.cats.length > 0) && (
+      {rows.some((r) => r.cats.length > 0 || r.adjustment !== 0) && (
         <div className="group-block">
           <table className="cat-table month-table">
             <colgroup>
@@ -567,7 +634,7 @@ function MonthDrill(props: {
               </tr>
             </thead>
             {rows
-              .filter((r) => r.cats.length > 0)
+              .filter((r) => r.cats.length > 0 || r.adjustment !== 0)
               .map((r) => (
                 <tbody key={r.bucket}>
                   <tr className="bucket-row">
@@ -589,6 +656,14 @@ function MonthDrill(props: {
                       <td className="num">{money(c.value)}</td>
                     </tr>
                   ))}
+                  {r.adjustment !== 0 && (
+                    <tr>
+                      <td>—</td>
+                      <td>Manual adjustment</td>
+                      <td className="metric">Monthly</td>
+                      <td className="num">{money(r.adjustment)}</td>
+                    </tr>
+                  )}
                 </tbody>
               ))}
           </table>
